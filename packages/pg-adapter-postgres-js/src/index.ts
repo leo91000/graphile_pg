@@ -97,9 +97,21 @@ class PostgresJsConnection implements PgConnection {
     ) as PgListenRequest;
   }
 
-  async close(): Promise<void> {
+  async end(): Promise<void> {
     this.closed = true;
     await this.sql.end();
+  }
+
+  async withClient<T>(
+    fn: (client: PgConnection) => Promise<T> | T,
+  ): Promise<T> {
+    const reserved = await this.sql.reserve();
+    try {
+      const connection = new PostgresJsConnection(reserved);
+      return await fn(connection);
+    } finally {
+      reserved.release();
+    }
   }
 
   private wrapError(error: unknown): PgAdapterError {

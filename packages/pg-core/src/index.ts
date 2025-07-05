@@ -57,9 +57,14 @@ export interface PgConnection extends PgTransaction {
   transaction<T>(fn: (tx: PgTransaction) => Promise<T>): Promise<T>;
 
   /**
-   * Connection lifecycle
+   * Properly close the connection/pool
    */
-  close(): Promise<void>;
+  end(): Promise<void>;
+
+  /**
+   * Get a dedicated connection from the pool and auto-release it
+   */
+  withClient<T>(fn: (client: PgConnection) => Promise<T> | T): Promise<T>;
 
   /**
    * LISTEN support matching postgres.js API

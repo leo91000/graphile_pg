@@ -148,7 +148,7 @@ class NodePostgresConnection implements PgConnection {
     return setupListener() as PgListenRequest;
   }
 
-  async close(): Promise<void> {
+  async end(): Promise<void> {
     this.closed = true;
     
     // Release the main client
@@ -156,6 +156,16 @@ class NodePostgresConnection implements PgConnection {
     
     // End the pool
     await this.pool.end();
+  }
+
+  async withClient<T>(fn: (client: PgConnection) => Promise<T> | T): Promise<T> {
+    const client = await this.pool.connect();
+    try {
+      const connection = new NodePostgresConnection(client, this.pool);
+      return await fn(connection);
+    } finally {
+      client.release();
+    }
   }
 
   private wrapError(error: unknown): PgAdapterError {
