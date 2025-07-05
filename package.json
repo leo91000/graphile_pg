@@ -1,0 +1,35 @@
+{
+  "private": true,
+  "name": "@graphile/pg",
+  "version": "0.0.0",
+  "description": "PostgreSQL adapter system for Graphile tools - monorepo root",
+  "packageManager": "yarn@4.9.2",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach --all --topological run build",
+    "clean": "rm -rf packages/*/dist packages/*/tsconfig.tsbuildinfo",
+    "prepack:all": "yarn workspaces foreach --all --topological run prepack",
+    "test": "yarn workspaces foreach --all --topological run test",
+    "typecheck": "yarn workspaces foreach --all --topological run tsc --noEmit",
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx packages/",
+    "prettier": "prettier --cache --ignore-path .gitignore",
+    "prettier:all": "yarn prettier '**/*.{json,md,mdx,html,js,jsx,ts,tsx,yml}'",
+    "prettier:fix": "yarn prettier:all --write",
+    "prettier:check": "yarn prettier:all --list-different"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.32",
+    "@types/pg-cursor": "^2.7.2",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18",
+    "yarn": ">=1.3.2"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "allowJs": false,
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "stripInternal": true,
+    "sourceMap": true,
+    "pretty": true,
+    "importHelpers": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "preserveWatchOutput": true,
+    "useUnknownInCatchVariables": false,
+    "noFallthroughCasesInSwitch": false,
+    "noUnusedParameters": false,
+    "noUnusedLocals": false
+  },
+  "exclude": ["node_modules", "dist", ".yarn"],
+  "include": [],
+  "references": [
+    { "path": "packages/pg-core" },
+    { "path": "packages/pg-adapter-pg" },
+    { "path": "packages/pg-adapter-postgres-js" }
+  ]
+}
