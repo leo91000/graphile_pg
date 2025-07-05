@@ -11,7 +11,10 @@
     "build": "yarn workspaces foreach --all --topological run build",
     "clean": "rm -rf packages/*/dist packages/*/tsconfig.tsbuildinfo",
     "prepack:all": "yarn workspaces foreach --all --topological run prepack",
-    "test": "yarn workspaces foreach --all --topological run test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "yarn workspaces foreach --all --topological run tsc --noEmit",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx packages/",
     "prettier": "prettier --cache --ignore-path .gitignore",
@@ -24,9 +27,12 @@
     "@types/pg-cursor": "^2.7.2",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
     "eslint": "^9.0.0",
     "prettier": "^3.4.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18",

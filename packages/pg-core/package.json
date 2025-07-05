@@ -21,7 +21,8 @@
   "scripts": {
     "build": "tsdown src/index.ts --format cjs,esm",
     "prepack": "npm run build",
-    "test": "echo \"No tests yet\""
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "repository": {
     "type": "git",
