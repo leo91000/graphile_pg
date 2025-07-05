@@ -20,7 +20,7 @@
     "noUnusedParameters": false,
     "noUnusedLocals": false
   },
-  "exclude": ["node_modules", "dist", ".yarn"],
+  "exclude": ["node_modules", "dist", ".yarn", "**/*.test.ts", "**/*.spec.ts", "**/test/**", "**/__tests__/**"],
   "include": [],
   "references": [
     { "path": "packages/pg-core" },
