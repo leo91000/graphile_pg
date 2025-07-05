@@ -8,7 +8,5 @@
     "isolatedDeclarations": true
   },
   "include": ["src"],
-  "references": [
-    { "path": "../pg-core" }
-  ]
+  "references": [{ "path": "../pg-core" }]
 }

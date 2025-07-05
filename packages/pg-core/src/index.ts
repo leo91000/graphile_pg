@@ -8,12 +8,9 @@ export interface Row {
 
 export type MaybeRow = Row | undefined;
 
-export interface PgQueryResult<T extends MaybeRow> {
-  /**
-   * Async iterator for processing rows one by one
-   */
-  [Symbol.asyncIterator](): AsyncIterator<T>;
-
+export interface PgQueryResult<T extends MaybeRow>
+  extends AsyncIterable<T>,
+    Promise<T[]> {
   /**
    * Process rows in batches
    */
@@ -152,4 +149,4 @@ export class PgAdapterError extends Error {
   }
 }
 
-export { PgHelper, PgClientHelper } from './helpers'
+export { PgHelper, PgClientHelper } from "./helpers";

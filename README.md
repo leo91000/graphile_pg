@@ -27,11 +27,13 @@ import { createNodePostgresConnection } from "@graphile/pg-adapter-pg";
 
 // Create a connection
 const connection = await createNodePostgresConnection(
-  "postgresql://user:pass@localhost:5432/mydb"
+  "postgresql://user:pass@localhost:5432/mydb",
 );
 
 // Execute queries with streaming results
-const result = connection.query('SELECT * FROM users WHERE active = $1', [true]);
+const result = connection.query("SELECT * FROM users WHERE active = $1", [
+  true,
+]);
 
 // Process rows one by one
 for await (const row of result) {
@@ -43,13 +45,15 @@ const allRows = await result.toArray();
 
 // Transaction support
 await connection.transaction(async (tx) => {
-  await tx.execute('UPDATE users SET active = false WHERE id = $1', [123]);
-  await tx.execute('INSERT INTO audit_log (action) VALUES ($1)', ['user_deactivated']);
+  await tx.execute("UPDATE users SET active = false WHERE id = $1", [123]);
+  await tx.execute("INSERT INTO audit_log (action) VALUES ($1)", [
+    "user_deactivated",
+  ]);
 });
 
 // LISTEN/NOTIFY support
-const listener = await connection.listen('my_channel', (payload) => {
-  console.log('Received:', payload);
+const listener = await connection.listen("my_channel", (payload) => {
+  console.log("Received:", payload);
 });
 
 // Stop listening
@@ -66,11 +70,11 @@ import { createPostgresJsConnection } from "@graphile/pg-adapter-postgres-js";
 
 // Create a connection
 const connection = await createPostgresJsConnection(
-  "postgresql://user:pass@localhost:5432/mydb"
+  "postgresql://user:pass@localhost:5432/mydb",
 );
 
 // Same interface as node-postgres adapter
-const result = connection.query('SELECT * FROM large_table');
+const result = connection.query("SELECT * FROM large_table");
 
 // Process in batches for memory efficiency
 for await (const batch of result.batches(100)) {
@@ -79,7 +83,7 @@ for await (const batch of result.batches(100)) {
 }
 
 // Get just the count
-const count = await connection.query('SELECT * FROM users').count();
+const count = await connection.query("SELECT * FROM users").count();
 console.log(`Total users: ${count}`);
 ```
 

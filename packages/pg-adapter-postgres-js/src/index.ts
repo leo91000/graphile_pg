@@ -68,7 +68,12 @@ class PostgresJsConnection implements PgConnection {
       );
 
       return {
-        unlisten: () => postgresListenMeta.unlisten(),
+        unlisten: () => {
+          // Only unlisten if the connection is still open
+          if (!this.closed) {
+            postgresListenMeta.unlisten();
+          }
+        },
       };
     } catch (error) {
       throw this.wrapError(error);
@@ -81,7 +86,14 @@ class PostgresJsConnection implements PgConnection {
   }
 
   private wrapError<T = unknown>(error: T): PgAdapterError | T {
-    if (error && typeof error === "object" && "code" in error) {
+    // postgres.js errors have a specific structure with 'name' property
+    if (
+      error &&
+      typeof error === "object" &&
+      "name" in error &&
+      (error as any).name === "PostgresError" &&
+      "code" in error
+    ) {
       const pgError = error as any;
       return new BasePgAdapterError(
         pgError.message || "Database error",
@@ -124,6 +136,7 @@ class PostgresJsClient implements PgClient {
 class PostgresJsQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
   private pendingQuery: postgres.PendingQuery<T[]>;
   private cachedResult: postgres.RowList<T[]> | null = null;
+  private arrayPromise: Promise<T[]> | null = null;
 
   constructor(
     pendingQuery: postgres.PendingQuery<T[]>,
@@ -131,6 +144,51 @@ class PostgresJsQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
   ) {
     this.pendingQuery = pendingQuery;
   }
+
+  private getArrayPromise(): Promise<T[]> {
+    if (!this.arrayPromise) {
+      // Create the promise lazily to avoid executing the query until needed
+      this.arrayPromise = this.pendingQuery
+        .then((result) => {
+          this.cachedResult = result;
+          return [...result];
+        })
+        .catch((error) => {
+          throw this.wrapError(error);
+        });
+    }
+    return this.arrayPromise;
+  }
+
+  // Promise interface implementation
+  then<TResult1 = T[], TResult2 = never>(
+    onfulfilled?:
+      | ((value: T[]) => TResult1 | PromiseLike<TResult1>)
+      | undefined
+      | null,
+    onrejected?:
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | undefined
+      | null,
+  ): Promise<TResult1 | TResult2> {
+    return this.getArrayPromise().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?:
+      | ((reason: any) => TResult | PromiseLike<TResult>)
+      | undefined
+      | null,
+  ): Promise<T[] | TResult> {
+    return this.getArrayPromise().catch(onrejected);
+  }
+
+  finally(onfinally?: (() => void) | undefined | null): Promise<T[]> {
+    return this.getArrayPromise().finally(onfinally);
+  }
+
+  // Make it a proper thenable
+  [Symbol.toStringTag] = "PostgresJsQueryResult";
 
   async *[Symbol.asyncIterator](): AsyncIterator<T> {
     try {

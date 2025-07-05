@@ -1,4 +1,4 @@
-import type { PgConnection, PgClient, PgQueryResult, MaybeRow } from './index';
+import type { PgConnection, PgClient, PgQueryResult, MaybeRow } from "./index";
 
 /**
  * Helper class that provides convenient methods on top of the minimal PgConnection interface
@@ -11,7 +11,7 @@ export class PgHelper {
    */
   query<T extends MaybeRow = any>(
     sql: string,
-    params?: any[]
+    params?: any[],
   ): PgQueryResult<T> {
     return this.connection.query(sql, params);
   }
@@ -20,18 +20,15 @@ export class PgHelper {
    * Execute a query without returning results
    */
   async execute(sql: string, params?: any[]): Promise<void> {
-    const result = this.query(sql, params);
-    // Consume the stream without storing results
-    for await (const _ of result) {
-      // Just iterate to execute
-    }
+    // Since PgQueryResult extends Promise, we can just await it
+    await this.query(sql, params);
   }
 
   /**
    * Send a NOTIFY
    */
   async notify(channel: string, payload?: string): Promise<void> {
-    await this.execute('SELECT pg_notify($1, $2)', [channel, payload ?? '']);
+    await this.execute("SELECT pg_notify($1, $2)", [channel, payload ?? ""]);
   }
 
   /**
@@ -40,14 +37,14 @@ export class PgHelper {
   async begin<T>(fn: (helper: PgClientHelper) => Promise<T>): Promise<T> {
     const client = await this.connection.reserve();
     const clientHelper = new PgClientHelper(client);
-    
+
     try {
-      await clientHelper.execute('BEGIN');
+      await clientHelper.execute("BEGIN");
       const result = await fn(clientHelper);
-      await clientHelper.execute('COMMIT');
+      await clientHelper.execute("COMMIT");
       return result;
     } catch (error) {
-      await clientHelper.execute('ROLLBACK');
+      await clientHelper.execute("ROLLBACK");
       throw error;
     } finally {
       client.release();
@@ -65,11 +62,11 @@ export class PgHelper {
    * Execute a function with an auto-released client
    */
   async withClient<T>(
-    fn: (helper: PgClientHelper) => Promise<T> | T
+    fn: (helper: PgClientHelper) => Promise<T> | T,
   ): Promise<T> {
     const client = await this.connection.reserve();
     const clientHelper = new PgClientHelper(client);
-    
+
     try {
       return await fn(clientHelper);
     } finally {
@@ -82,7 +79,7 @@ export class PgHelper {
    */
   listen(
     channel: string,
-    callback: (payload: string | null) => void
+    callback: (payload: string | null) => void,
   ): Promise<{ unlisten: () => void }> {
     return this.connection.listen(channel, callback);
   }
@@ -113,7 +110,7 @@ export class PgClientHelper {
    */
   query<T extends MaybeRow = any>(
     sql: string,
-    params?: any[]
+    params?: any[],
   ): PgQueryResult<T> {
     return this.client.query(sql, params);
   }
@@ -122,17 +119,15 @@ export class PgClientHelper {
    * Execute a query without returning results
    */
   async execute(sql: string, params?: any[]): Promise<void> {
-    const result = this.query(sql, params);
-    for await (const _ of result) {
-      // Just iterate to execute
-    }
+    // Since PgQueryResult extends Promise, we can just await it
+    await this.query(sql, params);
   }
 
   /**
    * Send a NOTIFY
    */
   async notify(channel: string, payload?: string): Promise<void> {
-    await this.execute('SELECT pg_notify($1, $2)', [channel, payload ?? '']);
+    await this.execute("SELECT pg_notify($1, $2)", [channel, payload ?? ""]);
   }
 
   /**
@@ -140,11 +135,12 @@ export class PgClientHelper {
    */
   async savepoint<T>(
     fn: (helper: PgClientHelper) => Promise<T>,
-    name?: string
+    name?: string,
   ): Promise<T> {
     // Use provided name or generate a unique one
-    const savepointName = name || `sp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    
+    const savepointName =
+      name || `sp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     try {
       await this.execute(`SAVEPOINT ${savepointName}`);
       const result = await fn(this);

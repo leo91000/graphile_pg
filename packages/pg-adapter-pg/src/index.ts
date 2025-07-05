@@ -94,7 +94,8 @@ class NodePostgresConnection implements PgConnection {
     // Return unlisten function
     return {
       unlisten: () => {
-        listenClient.query(`UNLISTEN "${channel.replace(/"/g, '""')}"`)
+        listenClient
+          .query(`UNLISTEN "${channel.replace(/"/g, '""')}"`)
           .catch(() => {
             // Ignore errors during unlisten
           })
@@ -155,8 +156,11 @@ class NodePostgresClient implements PgClient {
 }
 
 // Query result for pool-level queries that need to manage their own connections
-class NodePostgresPoolQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
+class NodePostgresPoolQueryResult<T extends MaybeRow>
+  implements PgQueryResult<T>
+{
   private cachedResult: QueryResult<any> | null = null;
+  private arrayPromise: Promise<T[]> | null = null;
 
   constructor(
     private pool: PgPoolNative,
@@ -165,12 +169,60 @@ class NodePostgresPoolQueryResult<T extends MaybeRow> implements PgQueryResult<T
     private wrapError: (error: unknown) => PgAdapterError,
   ) {}
 
+  private getArrayPromise(): Promise<T[]> {
+    if (!this.arrayPromise) {
+      // Create the promise lazily
+      this.arrayPromise = this.executeQuery();
+    }
+    return this.arrayPromise;
+  }
+
+  private async executeQuery(): Promise<T[]> {
+    try {
+      const result = await this.pool.query(this.sql, this.params);
+      this.cachedResult = result;
+      return result.rows as T[];
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  // Promise interface implementation
+  then<TResult1 = T[], TResult2 = never>(
+    onfulfilled?:
+      | ((value: T[]) => TResult1 | PromiseLike<TResult1>)
+      | undefined
+      | null,
+    onrejected?:
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | undefined
+      | null,
+  ): Promise<TResult1 | TResult2> {
+    return this.getArrayPromise().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?:
+      | ((reason: any) => TResult | PromiseLike<TResult>)
+      | undefined
+      | null,
+  ): Promise<T[] | TResult> {
+    return this.getArrayPromise().catch(onrejected);
+  }
+
+  finally(onfinally?: (() => void) | undefined | null): Promise<T[]> {
+    return this.getArrayPromise().finally(onfinally);
+  }
+
+  // Make it a proper thenable
+  [Symbol.toStringTag] = "NodePostgresPoolQueryResult";
+
   async *[Symbol.asyncIterator](): AsyncIterator<T> {
     // Get a client for streaming
     const client = await this.pool.connect();
     try {
       const cursor = client.query(new Cursor(this.sql, this.params));
-      
+
       try {
         let rows: T[];
         do {
@@ -197,7 +249,7 @@ class NodePostgresPoolQueryResult<T extends MaybeRow> implements PgQueryResult<T
     const client = await this.pool.connect();
     try {
       const cursor = client.query(new Cursor(this.sql, this.params));
-      
+
       try {
         let rows: T[];
         do {
@@ -246,6 +298,7 @@ class NodePostgresPoolQueryResult<T extends MaybeRow> implements PgQueryResult<T
 // Query result for client-level queries
 class NodePostgresQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
   private cachedResult: QueryResult<any> | null = null;
+  private arrayPromise: Promise<T[]> | null = null;
 
   constructor(
     private client: PgPoolClientNative,
@@ -254,9 +307,57 @@ class NodePostgresQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
     private wrapError: (error: unknown) => PgAdapterError,
   ) {}
 
+  private getArrayPromise(): Promise<T[]> {
+    if (!this.arrayPromise) {
+      // Create the promise lazily
+      this.arrayPromise = this.executeQuery();
+    }
+    return this.arrayPromise;
+  }
+
+  private async executeQuery(): Promise<T[]> {
+    try {
+      const result = await this.client.query(this.sql, this.params);
+      this.cachedResult = result;
+      return result.rows as T[];
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  // Promise interface implementation
+  then<TResult1 = T[], TResult2 = never>(
+    onfulfilled?:
+      | ((value: T[]) => TResult1 | PromiseLike<TResult1>)
+      | undefined
+      | null,
+    onrejected?:
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | undefined
+      | null,
+  ): Promise<TResult1 | TResult2> {
+    return this.getArrayPromise().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?:
+      | ((reason: any) => TResult | PromiseLike<TResult>)
+      | undefined
+      | null,
+  ): Promise<T[] | TResult> {
+    return this.getArrayPromise().catch(onrejected);
+  }
+
+  finally(onfinally?: (() => void) | undefined | null): Promise<T[]> {
+    return this.getArrayPromise().finally(onfinally);
+  }
+
+  // Make it a proper thenable
+  [Symbol.toStringTag] = "NodePostgresQueryResult";
+
   async *[Symbol.asyncIterator](): AsyncIterator<T> {
     const cursor = this.client.query(new Cursor(this.sql, this.params));
-    
+
     try {
       let rows: T[];
       do {
@@ -278,7 +379,7 @@ class NodePostgresQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
     }
 
     const cursor = this.client.query(new Cursor(this.sql, this.params));
-    
+
     try {
       let rows: T[];
       do {
