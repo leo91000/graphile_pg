@@ -4,13 +4,13 @@
  */
 import type {
   PgConnection,
-  PgTransaction,
+  PgClient,
   PgQueryResult,
-  PgListenRequest,
   PgAdapterError,
+  MaybeRow,
 } from "@graphile/pg-core";
 import { PgAdapterError as BasePgAdapterError } from "@graphile/pg-core";
-import type { MaybeRow, Sql, TransactionSql } from "postgres";
+import type { Sql, ReservedSql } from "postgres";
 import postgres from "postgres";
 
 /**
@@ -45,56 +45,34 @@ class PostgresJsConnection implements PgConnection {
     );
   }
 
-  async execute(sql: string, params?: any[]): Promise<void> {
-    try {
-      await (params ? this.sql.unsafe(sql, params) : this.sql.unsafe(sql));
-    } catch (error) {
-      throw this.wrapError(error);
-    }
+  async reserve(): Promise<PgClient> {
+    const reserved = await this.sql.reserve();
+    return new PostgresJsClient(reserved, this.wrapError.bind(this));
   }
 
-  async notify(channel: string, payload?: string): Promise<void> {
-    try {
-      await this.sql.notify(channel, payload ?? "");
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
-
-  async transaction<T>(fn: (tx: PgTransaction) => Promise<T>): Promise<T> {
-    try {
-      const result = await this.sql.begin(async (txSql) => {
-        const tx = new PostgresJsTransaction(txSql, this.wrapError.bind(this));
-        return await fn(tx);
-      });
-      return result as T;
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
-
-  listen(
+  async listen(
     channel: string,
     onnotify: (payload: string | null) => void,
-  ): PgListenRequest {
+  ): Promise<{ unlisten: () => void }> {
     if (this.closed) {
       throw new Error("Connection is closed");
     }
 
-    // postgres.js listen returns a promise that resolves with unlisten method
-    const listenPromise = this.sql.listen(channel, (payload: string) => {
-      onnotify(payload || null);
-    });
+    try {
+      // postgres.js listen returns a promise that resolves with unlisten method
+      const postgresListenMeta = await this.sql.listen(
+        channel,
+        (payload: string) => {
+          onnotify(payload || null);
+        },
+      );
 
-    // Wrap the postgres.js promise to match our interface
-    return listenPromise.then(
-      (postgresListenMeta) => ({
+      return {
         unlisten: () => postgresListenMeta.unlisten(),
-      }),
-      (error) => {
-        throw this.wrapError(error);
-      },
-    ) as PgListenRequest;
+      };
+    } catch (error) {
+      throw this.wrapError(error);
+    }
   }
 
   async end(): Promise<void> {
@@ -102,19 +80,7 @@ class PostgresJsConnection implements PgConnection {
     await this.sql.end();
   }
 
-  async withClient<T>(
-    fn: (client: PgConnection) => Promise<T> | T,
-  ): Promise<T> {
-    const reserved = await this.sql.reserve();
-    try {
-      const connection = new PostgresJsConnection(reserved);
-      return await fn(connection);
-    } finally {
-      reserved.release();
-    }
-  }
-
-  private wrapError(error: unknown): PgAdapterError {
+  private wrapError<T = unknown>(error: T): PgAdapterError | T {
     if (error && typeof error === "object" && "code" in error) {
       const pgError = error as any;
       return new BasePgAdapterError(
@@ -129,9 +95,29 @@ class PostgresJsConnection implements PgConnection {
       );
     }
 
-    // Handle non-PostgreSQL errors
-    const message = error instanceof Error ? error.message : String(error);
-    return new BasePgAdapterError(message, undefined, error);
+    return error;
+  }
+}
+
+class PostgresJsClient implements PgClient {
+  constructor(
+    private reserved: ReservedSql,
+    private wrapError: (error: unknown) => PgAdapterError,
+  ) {}
+
+  query<T extends MaybeRow = any>(
+    sql: string,
+    params?: any[],
+  ): PgQueryResult<T> {
+    const pendingQuery = params
+      ? this.reserved.unsafe<T[]>(sql, params)
+      : this.reserved.unsafe<T[]>(sql);
+
+    return new PostgresJsQueryResult<T>(pendingQuery, this.wrapError);
+  }
+
+  release(): void {
+    this.reserved.release();
   }
 }
 
@@ -203,41 +189,5 @@ class PostgresJsQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
       this.cachedResult = await this.pendingQuery;
     }
     return this.cachedResult;
-  }
-}
-
-class PostgresJsTransaction implements PgTransaction {
-  constructor(
-    private txSql: TransactionSql<Record<string, unknown>>,
-    private wrapError: (error: unknown) => PgAdapterError,
-  ) {}
-
-  query<T extends MaybeRow = any>(
-    sql: string,
-    params?: any[],
-  ): PgQueryResult<T> {
-    const pendingQuery = params
-      ? this.txSql.unsafe(sql, params)
-      : this.txSql.unsafe(sql);
-
-    // @ts-expect-error: Incompatible types in assignment
-    return new PostgresJsQueryResult<T>(pendingQuery, this.wrapError);
-  }
-
-  async execute(sql: string, params?: any[]): Promise<void> {
-    try {
-      await (params ? this.txSql.unsafe(sql, params) : this.txSql.unsafe(sql));
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
-
-  async notify(channel: string, payload?: string): Promise<void> {
-    try {
-      // Use pg_notify in transactions since txSql doesn't have .notify method
-      await this.txSql`SELECT pg_notify(${channel}, ${payload ?? ""})`;
-    } catch (error) {
-      throw this.wrapError(error);
-    }
   }
 }

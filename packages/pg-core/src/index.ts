@@ -30,7 +30,7 @@ export interface PgQueryResult<T extends MaybeRow> {
   count(): Promise<number>;
 }
 
-export interface PgTransaction {
+export interface PgClient {
   /**
    * Stream-first query method
    */
@@ -40,48 +40,37 @@ export interface PgTransaction {
   ): PgQueryResult<T>;
 
   /**
-   * Execute without returning results
+   * Release the client back to the pool
    */
-  execute(sql: string, params?: any[]): Promise<void>;
-
-  /**
-   * NOTIFY support
-   */
-  notify(channel: string, payload?: string): Promise<void>;
+  release(): void;
 }
 
-export interface PgConnection extends PgTransaction {
+export interface PgConnection {
   /**
-   * Transaction support
+   * Stream-first query method
    */
-  transaction<T>(fn: (tx: PgTransaction) => Promise<T>): Promise<T>;
+  query<T extends MaybeRow = any>(
+    sql: string,
+    params?: any[],
+  ): PgQueryResult<T>;
+
+  /**
+   * Get a client from the pool
+   */
+  reserve(): Promise<PgClient>;
+
+  /**
+   * LISTEN support
+   */
+  listen(
+    channel: string,
+    onnotify: (payload: string | null) => void,
+  ): Promise<{ unlisten: () => void }>;
 
   /**
    * Properly close the connection/pool
    */
   end(): Promise<void>;
-
-  /**
-   * Get a dedicated connection from the pool and auto-release it
-   */
-  withClient<T>(fn: (client: PgConnection) => Promise<T> | T): Promise<T>;
-
-  /**
-   * LISTEN support matching postgres.js API
-   */
-  listen(
-    channel: string | string[],
-    onnotify: (payload: string | null) => void,
-  ): PgListenRequest;
-}
-
-export interface PgListenRequest extends Promise<PgListenMeta> {}
-
-export interface PgListenMeta {
-  /**
-   * Stop listening to this channel
-   */
-  unlisten(): Promise<void>;
 }
 
 /**
@@ -162,3 +151,5 @@ export class PgAdapterError extends Error {
     return this.code.startsWith("23");
   }
 }
+
+export { PgHelper, PgClientHelper } from './helpers'

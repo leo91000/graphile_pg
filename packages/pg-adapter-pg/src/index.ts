@@ -12,9 +12,8 @@ import * as pg from "pg";
 import Cursor from "pg-cursor";
 import type {
   PgConnection,
-  PgTransaction,
+  PgClient,
   PgQueryResult,
-  PgListenRequest,
   MaybeRow,
 } from "@graphile/pg-core";
 import { PgAdapterError } from "@graphile/pg-core";
@@ -34,138 +33,81 @@ export async function createNodePostgresConnection(
     ...poolConfig,
   });
 
-  const client = await pool.connect();
-  return new NodePostgresConnection(client, pool);
+  return new NodePostgresConnection(pool);
 }
 
 class NodePostgresConnection implements PgConnection {
   private closed = false;
 
-  constructor(
-    private client: PgPoolClientNative,
-    private pool: PgPoolNative,
-  ) {}
+  constructor(private pool: PgPoolNative) {}
 
   query<T extends MaybeRow = any>(
     sql: string,
     params?: any[],
   ): PgQueryResult<T> {
-    return new NodePostgresQueryResult<T>(
-      this.client,
+    // For pool-level queries, we need to handle the connection internally
+    return new NodePostgresPoolQueryResult<T>(
+      this.pool,
       sql,
       params,
       this.wrapError.bind(this),
     );
   }
 
-  async execute(sql: string, params?: any[]): Promise<void> {
-    try {
-      await this.client.query(sql, params);
-    } catch (error) {
-      throw this.wrapError(error);
-    }
+  async reserve(): Promise<PgClient> {
+    const client = await this.pool.connect();
+    return new NodePostgresClient(client, this.wrapError.bind(this));
   }
 
-  async notify(channel: string, payload?: string): Promise<void> {
-    try {
-      await this.client.query("SELECT pg_notify($1, $2)", [
-        channel,
-        payload ?? "",
-      ]);
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
-
-  async transaction<T>(fn: (tx: PgTransaction) => Promise<T>): Promise<T> {
-    try {
-      await this.client.query("BEGIN");
-      try {
-        const tx = new NodePostgresTransaction(
-          this.client,
-          this.wrapError.bind(this),
-        );
-        const result = await fn(tx);
-        await this.client.query("COMMIT");
-        return result;
-      } catch (error) {
-        await this.client.query("ROLLBACK");
-        throw error;
-      }
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
-
-  listen(
+  async listen(
     channel: string,
     onnotify: (payload: string | null) => void,
-  ): PgListenRequest {
+  ): Promise<{ unlisten: () => void }> {
     if (this.closed) {
       throw new Error("Connection is closed");
     }
 
-    // Create a promise that sets up the listener
-    const setupListener = async (): Promise<{ unlisten: () => Promise<void> }> => {
-      // Get a dedicated connection for LISTEN
-      const listenClient = await this.pool.connect();
+    // Get a dedicated connection for LISTEN
+    const listenClient = await this.pool.connect();
 
-      // Set up notification handler
-      listenClient.on("notification", (msg) => {
-        if (msg.channel === channel) {
-          onnotify(msg.payload ?? null);
-        }
-      });
-
-      // Handle errors on the listen client
-      listenClient.on("error", (err) => {
-        console.error("Listen client error:", err);
-        // Could implement reconnection logic here
-      });
-
-      // Start listening
-      try {
-        await listenClient.query(`LISTEN "${channel.replace(/"/g, '""')}"`);
-      } catch (error) {
-        listenClient.release();
-        throw this.wrapError(error);
+    // Set up notification handler
+    listenClient.on("notification", (msg) => {
+      if (msg.channel === channel) {
+        onnotify(msg.payload ?? null);
       }
+    });
 
-      // Return unlisten function
-      return {
-        unlisten: async () => {
-          try {
-            await listenClient.query(`UNLISTEN "${channel.replace(/"/g, '""')}"`);
-          } catch (error) {
+    // Handle errors on the listen client
+    listenClient.on("error", (err) => {
+      console.error("Listen client error:", err);
+      // Could implement reconnection logic here
+    });
+
+    // Start listening
+    try {
+      await listenClient.query(`LISTEN "${channel.replace(/"/g, '""')}"`);
+    } catch (error) {
+      listenClient.release();
+      throw this.wrapError(error);
+    }
+
+    // Return unlisten function
+    return {
+      unlisten: () => {
+        listenClient.query(`UNLISTEN "${channel.replace(/"/g, '""')}"`)
+          .catch(() => {
             // Ignore errors during unlisten
-          } finally {
+          })
+          .finally(() => {
             listenClient.release();
-          }
-        },
-      };
+          });
+      },
     };
-
-    return setupListener() as PgListenRequest;
   }
 
   async end(): Promise<void> {
     this.closed = true;
-    
-    // Release the main client
-    this.client.release();
-    
-    // End the pool
     await this.pool.end();
-  }
-
-  async withClient<T>(fn: (client: PgConnection) => Promise<T> | T): Promise<T> {
-    const client = await this.pool.connect();
-    try {
-      const connection = new NodePostgresConnection(client, this.pool);
-      return await fn(connection);
-    } finally {
-      client.release();
-    }
   }
 
   private wrapError(error: unknown): PgAdapterError {
@@ -189,6 +131,119 @@ class NodePostgresConnection implements PgConnection {
   }
 }
 
+class NodePostgresClient implements PgClient {
+  constructor(
+    private client: PgPoolClientNative,
+    private wrapError: (error: unknown) => PgAdapterError,
+  ) {}
+
+  query<T extends MaybeRow = any>(
+    sql: string,
+    params?: any[],
+  ): PgQueryResult<T> {
+    return new NodePostgresQueryResult<T>(
+      this.client,
+      sql,
+      params,
+      this.wrapError,
+    );
+  }
+
+  release(): void {
+    this.client.release();
+  }
+}
+
+// Query result for pool-level queries that need to manage their own connections
+class NodePostgresPoolQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
+  private cachedResult: QueryResult<any> | null = null;
+
+  constructor(
+    private pool: PgPoolNative,
+    private sql: string,
+    private params: any[] | undefined,
+    private wrapError: (error: unknown) => PgAdapterError,
+  ) {}
+
+  async *[Symbol.asyncIterator](): AsyncIterator<T> {
+    // Get a client for streaming
+    const client = await this.pool.connect();
+    try {
+      const cursor = client.query(new Cursor(this.sql, this.params));
+      
+      try {
+        let rows: T[];
+        do {
+          rows = await cursor.read(1);
+          if (rows.length > 0) {
+            yield rows[0];
+          }
+        } while (rows.length > 0);
+      } finally {
+        await cursor.close();
+      }
+    } catch (error) {
+      throw this.wrapError(error);
+    } finally {
+      client.release();
+    }
+  }
+
+  async *batches(size: number): AsyncIterable<T[]> {
+    if (size <= 0) {
+      throw new Error("Batch size must be greater than 0");
+    }
+
+    const client = await this.pool.connect();
+    try {
+      const cursor = client.query(new Cursor(this.sql, this.params));
+      
+      try {
+        let rows: T[];
+        do {
+          rows = await cursor.read(size);
+          if (rows.length > 0) {
+            yield rows;
+          }
+        } while (rows.length > 0);
+      } finally {
+        await cursor.close();
+      }
+    } catch (error) {
+      throw this.wrapError(error);
+    } finally {
+      client.release();
+    }
+  }
+
+  async toArray(): Promise<T[]> {
+    try {
+      const result = await this.getResult();
+      return result.rows as T[];
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  async count(): Promise<number> {
+    try {
+      const result = await this.getResult();
+      return result.rowCount ?? result.rows.length;
+    } catch (error) {
+      throw this.wrapError(error);
+    }
+  }
+
+  private async getResult(): Promise<QueryResult<any>> {
+    if (this.cachedResult === null) {
+      // Use pool.query for simple non-streaming queries
+      this.cachedResult = await this.pool.query(this.sql, this.params);
+    }
+    return this.cachedResult;
+  }
+}
+
+// Query result for client-level queries
 class NodePostgresQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
   private cachedResult: QueryResult<any> | null = null;
 
@@ -200,7 +255,6 @@ class NodePostgresQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
   ) {}
 
   async *[Symbol.asyncIterator](): AsyncIterator<T> {
-    // Use cursor for true streaming - read 1 row at a time for minimal memory usage
     const cursor = this.client.query(new Cursor(this.sql, this.params));
     
     try {
@@ -223,7 +277,6 @@ class NodePostgresQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
       throw new Error("Batch size must be greater than 0");
     }
 
-    // Use cursor with the specified batch size
     const cursor = this.client.query(new Cursor(this.sql, this.params));
     
     try {
@@ -261,47 +314,8 @@ class NodePostgresQueryResult<T extends MaybeRow> implements PgQueryResult<T> {
 
   private async getResult(): Promise<QueryResult<any>> {
     if (this.cachedResult === null) {
-      // For toArray() and count(), use regular query without cursor
       this.cachedResult = await this.client.query(this.sql, this.params);
     }
     return this.cachedResult;
-  }
-}
-
-class NodePostgresTransaction implements PgTransaction {
-  constructor(
-    private client: PgPoolClientNative,
-    private wrapError: (error: unknown) => PgAdapterError,
-  ) {}
-
-  query<T extends MaybeRow = any>(
-    sql: string,
-    params?: any[],
-  ): PgQueryResult<T> {
-    return new NodePostgresQueryResult<T>(
-      this.client,
-      sql,
-      params,
-      this.wrapError,
-    );
-  }
-
-  async execute(sql: string, params?: any[]): Promise<void> {
-    try {
-      await this.client.query(sql, params);
-    } catch (error) {
-      throw this.wrapError(error);
-    }
-  }
-
-  async notify(channel: string, payload?: string): Promise<void> {
-    try {
-      await this.client.query("SELECT pg_notify($1, $2)", [
-        channel,
-        payload ?? "",
-      ]);
-    } catch (error) {
-      throw this.wrapError(error);
-    }
   }
 }
