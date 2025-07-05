@@ -72,3 +72,29 @@ jobs:
       - name: Check Prettier formatting
         run: yarn prettier:check
         continue-on-error: true # Allow prettier to fail for now
+
+  publish-preview:
+    runs-on: ubuntu-latest
+    needs: [build-and-test, lint]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      
+      - name: Enable Corepack
+        run: corepack enable
+      
+      - name: Install dependencies
+        run: yarn install --immutable
+      
+      - name: Build all packages
+        run: yarn build
+      
+      - name: Publish preview packages
+        run: npx pkg-pr-new publish './packages/*' --compact
