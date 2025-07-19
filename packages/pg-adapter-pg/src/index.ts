@@ -95,7 +95,7 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
       channel: string,
       onnotify: (payload: string | null) => void,
       onError?: (error: Error) => void,
-    ): Promise<{ unlisten: () => void }> {
+    ): Promise<{ unlisten: () => Promise<void> }> {
       if (closed) {
         throw new Error("Connection is closed");
       }
