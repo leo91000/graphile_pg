@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { createPostgresJsConnection } from "../index";
+import { createPostgresJsPool } from "../index";
 import { PgAdapterError } from "@graphile/pg-core";
 
 const DATABASE_URL =
   process.env.DATABASE_URL || "postgres://localhost:5432/test";
 
 describe("postgres.js error handling", () => {
-  let connection: Awaited<ReturnType<typeof createPostgresJsConnection>>;
+  let connection: Awaited<ReturnType<typeof createPostgresJsPool>>;
 
   beforeAll(async () => {
-    connection = await createPostgresJsConnection(DATABASE_URL);
+    connection = await createPostgresJsPool(DATABASE_URL);
   });
 
   afterAll(async () => {
@@ -59,38 +59,38 @@ describe("postgres.js error handling", () => {
     }
   });
 
-  it("preserves non-PostgresError errors", async () => {
-    const client = await connection.reserve();
-    try {
-      // Force an error by trying to query after release
-      client.release();
-      const result = client.query("SELECT 1");
-      await result.toArray();
-      expect.fail("Should have thrown an error");
-    } catch (error) {
-      // This should not be wrapped as PgAdapterError
-      expect(error).not.toBeInstanceOf(PgAdapterError);
-    }
+  it("handles syntax errors", async () => {
+    await connection.withPgClient(async (client) => {
+      // Test with an invalid query syntax
+      try {
+        const result = client.query("INVALID SQL SYNTAX");
+        await result.toArray();
+        expect.fail("Should have thrown an error");
+      } catch (error) {
+        // This should be wrapped as PgAdapterError with syntax error code
+        expect(error).toBeInstanceOf(PgAdapterError);
+        expect((error as PgAdapterError).code).toBe("42601"); // syntax_error
+      }
+    });
   });
 
   it("handles errors in transactions", async () => {
-    const client = await connection.reserve();
     try {
-      await client.query("BEGIN").toArray();
-      await client.query("CREATE TABLE test_tx (id INT PRIMARY KEY)").toArray();
+      await connection.withTransaction(async (client) => {
+        await client.query("CREATE TABLE test_tx (id INT PRIMARY KEY)").toArray();
 
-      // This should fail due to duplicate key
-      await client.query("INSERT INTO test_tx VALUES (1)").toArray();
-      const result = client.query("INSERT INTO test_tx VALUES (1)");
-      await result.toArray();
-      expect.fail("Should have thrown an error");
+        // This should fail due to duplicate key
+        await client.query("INSERT INTO test_tx VALUES (1)").toArray();
+        const result = client.query("INSERT INTO test_tx VALUES (1)");
+        await result.toArray();
+        expect.fail("Should have thrown an error");
+      });
     } catch (error) {
       expect(error).toBeInstanceOf(PgAdapterError);
       expect((error as PgAdapterError).code).toBe("23505"); // unique_violation
     } finally {
-      await client.query("ROLLBACK").toArray();
-      await client.query("DROP TABLE IF EXISTS test_tx").toArray();
-      client.release();
+      // Clean up in case the table was created
+      await connection.query("DROP TABLE IF EXISTS test_tx").toArray();
     }
   });
 });

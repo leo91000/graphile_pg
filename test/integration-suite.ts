@@ -1,18 +1,17 @@
 import { beforeAll, afterAll, describe, it, expect, beforeEach } from "vitest";
-import { PgConnection, PgHelper } from "../packages/pg-core/src";
+import { PgPool } from "../packages/pg-core/src";
 
 /**
  * Minimal integration test suite for PostgreSQL adapters
  */
 export function createIntegrationTestSuite(
-  getConnection: () => Promise<PgConnection>,
+  getConnection: () => Promise<PgPool>,
 ) {
   return (): void => {
-    let sql: PgHelper;
+    let sql: PgPool;
 
     beforeAll(async () => {
-      const connection = await getConnection();
-      sql = new PgHelper(connection);
+      sql = await getConnection();
     });
 
     afterAll(async () => {
@@ -54,8 +53,8 @@ export function createIntegrationTestSuite(
       });
 
       it("commits data", async () => {
-        await sql.begin(async (tx) => {
-          await tx.execute("INSERT INTO test VALUES (1, 'Alice')");
+        await sql.withTransaction(async (tx) => {
+          await tx.query("INSERT INTO test VALUES (1, 'Alice')");
         });
 
         const result = sql.query<{ name: string }>(
@@ -67,8 +66,8 @@ export function createIntegrationTestSuite(
 
       it("rolls back on error", async () => {
         try {
-          await sql.begin(async (tx) => {
-            await tx.execute("INSERT INTO test VALUES (1, 'Bob')");
+          await sql.withTransaction(async (tx) => {
+            await tx.query("INSERT INTO test VALUES (1, 'Bob')");
             throw new Error("Rollback");
           });
         } catch (e) {
@@ -80,28 +79,6 @@ export function createIntegrationTestSuite(
         expect(rows[0].count).toBe("0");
       });
 
-      it("handles savepoints", async () => {
-        await sql.begin(async (tx) => {
-          await tx.execute("INSERT INTO test VALUES (1, 'Alice')");
-
-          try {
-            await tx.savepoint(async (sp) => {
-              await sp.execute("INSERT INTO test VALUES (2, 'Bob')");
-              throw new Error("Rollback savepoint");
-            });
-          } catch (e) {
-            // Expected
-          }
-
-          await tx.execute("INSERT INTO test VALUES (3, 'Charlie')");
-        });
-
-        const result = sql.query<{ id: number }>(
-          "SELECT id FROM test ORDER BY id",
-        );
-        const rows = await result.toArray();
-        expect(rows.map((r) => r.id)).toEqual([1, 3]);
-      });
     });
 
     describe("LISTEN/NOTIFY", () => {
@@ -116,7 +93,7 @@ export function createIntegrationTestSuite(
         await new Promise((resolve) => setTimeout(resolve, 100));
 
         expect(messages).toEqual(["hello"]);
-        unlisten();
+        await unlisten();
       });
     });
   };

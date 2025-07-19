@@ -48,17 +48,17 @@
   "homepage": "https://github.com/leo91000/graphile_pg/tree/main/packages/pg-adapter-pg#readme",
   "dependencies": {
     "@graphile/pg-core": "workspace:^",
-    "pg-cursor": "^2.12.0",
+    "pg-cursor": "^2.15.3",
     "tslib": "^2.8.1"
   },
   "peerDependencies": {
     "pg": "^8.7.1"
   },
   "devDependencies": {
-    "@types/node": "^22.15.32",
-    "@types/pg": "^8.10.0",
-    "pg": "^8.7.1",
-    "tsdown": "^0.12.7",
+    "@types/node": "^22.16.5",
+    "@types/pg": "^8.15.4",
+    "pg": "^8.16.3",
+    "tsdown": "^0.12.9",
     "typescript": "^5.8.3"
   },
   "files": [

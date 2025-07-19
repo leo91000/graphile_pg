@@ -1,7 +1,7 @@
 import { describe } from "vitest";
 import crypto from "node:crypto";
 import { createIntegrationTestSuite } from "../../../../test/integration-suite";
-import { createNodePostgresConnection } from "../index";
+import { createNodePostgresPool } from "../index";
 
 const baseUrl = process.env.DATABASE_URL || "postgres://localhost:5432/test";
 
@@ -12,26 +12,31 @@ describe("@graphile/pg-adapter-pg integration tests", () => {
     const testUrl = baseUrl.replace(/\/[^/]*$/, `/${dbName}`);
 
     // Create the test database
-    const setupConnection = await createNodePostgresConnection(baseUrl);
+    const setupPool = await createNodePostgresPool({
+      connectionString: baseUrl,
+    });
     // Since PgQueryResult extends Promise, we can await it directly
-    await setupConnection.query(`CREATE DATABASE "${dbName}"`);
-    await setupConnection.end();
+    await setupPool.query(`CREATE DATABASE "${dbName}"`);
+    await setupPool.end();
 
     // Connect to the test database
-    const connection = await createNodePostgresConnection(testUrl, {
+    const pool = await createNodePostgresPool({
+      connectionString: testUrl,
       max: 5,
     });
 
     // Ensure cleanup on end
-    const originalEnd = connection.end.bind(connection);
-    connection.end = async () => {
+    const originalEnd = pool.end.bind(pool);
+    pool.end = async () => {
       await originalEnd();
       // Drop the test database
-      const cleanupConnection = await createNodePostgresConnection(baseUrl);
-      await cleanupConnection.query(`DROP DATABASE IF EXISTS "${dbName}"`);
-      await cleanupConnection.end();
+      const cleanupPool = await createNodePostgresPool({
+        connectionString: baseUrl,
+      });
+      await cleanupPool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
+      await cleanupPool.end();
     };
 
-    return connection;
+    return pool;
   })();
 });

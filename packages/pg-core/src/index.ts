@@ -2,6 +2,8 @@
  * Core interfaces for PostgreSQL adapters
  */
 
+import { createPgHelpers, PgHelpers } from "./helpers";
+
 export interface Row {
   [column: string]: any;
 }
@@ -10,7 +12,7 @@ export type MaybeRow = Row | undefined;
 
 export interface PgQueryResult<T extends MaybeRow>
   extends AsyncIterable<T>,
-    Promise<T[]> {
+  Promise<T[]> {
   /**
    * Process rows in batches
    */
@@ -35,40 +37,47 @@ export interface PgClient {
     sql: string,
     params?: any[],
   ): PgQueryResult<T>;
-
-  /**
-   * Release the client back to the pool
-   */
-  release(): void;
 }
 
-export interface PgConnection {
+export interface PgConnection extends PgClient {
   /**
-   * Stream-first query method
+   * Execute operations with a client from the pool
    */
-  query<T extends MaybeRow = any>(
-    sql: string,
-    params?: any[],
-  ): PgQueryResult<T>;
+  withPgClient<T>(
+    callback: (client: PgClient) => Promise<T>,
+  ): Promise<T>;
 
   /**
-   * Get a client from the pool
+   * Transaction support
    */
-  reserve(): Promise<PgClient>;
+  withTransaction<T>(
+    callback: (client: PgClient) => Promise<T>,
+  ): Promise<T>;
 
   /**
-   * LISTEN support
+   * LISTEN support with provider-specific reconnection handling
    */
   listen(
     channel: string,
     onnotify: (payload: string | null) => void,
-  ): Promise<{ unlisten: () => void }>;
+    onError?: (error: Error) => void,
+  ): Promise<{ unlisten: () => Promise<void> }>;
 
   /**
    * Properly close the connection/pool
    */
   end(): Promise<void>;
 }
+
+const RETRYABLE_ERROR_CODES = new Set([
+  "40001" /** serialization_failure */,
+  "40P01" /** deadlock_detected */,
+  "57P03" /** cannot_connect_now */,
+  "EHOSTUNREACH" /** no connection to the server */,
+  "ETIMEDOUT" /** timeout */,
+  "ECONNREFUSED" /** connection refused */,
+  "ECONNRESET",
+]);
 
 /**
  * Standard error class for PostgreSQL adapter errors
@@ -124,19 +133,7 @@ export class PgAdapterError extends Error {
    */
   isRetryable(): boolean {
     if (!this.code) return false;
-
-    /** Common retryable PostgreSQL error codes */
-    const retryableCodes = [
-      "40001" /** serialization_failure */,
-      "40P01" /** deadlock_detected */,
-      "57P03" /** cannot_connect_now */,
-      "EHOSTUNREACH" /** no connection to the server */,
-      "ETIMEDOUT" /** timeout */,
-      "ECONNREFUSED" /** connection refused */,
-      "ECONNRESET" /** connection reset */,
-    ];
-
-    return retryableCodes.includes(this.code);
+    return RETRYABLE_ERROR_CODES.has(this.code);
   }
 
   /**
@@ -149,4 +146,23 @@ export class PgAdapterError extends Error {
   }
 }
 
-export { PgHelper, PgClientHelper } from "./helpers";
+
+/**
+ * A PgConnection with all helper methods merged in
+ */
+export interface PgPool extends PgConnection, PgHelpers { }
+
+/**
+ * Create a PgPool from a PgConnection adapter
+ * This merges the connection with helper methods for convenience
+ */
+export function createPgPool(adapter: PgConnection): PgPool {
+  const helpers = createPgHelpers(adapter);
+
+  return {
+    ...adapter,
+    ...helpers
+  };
+}
+
+export { PgClientHelper, createPgHelpers } from "./helpers";
