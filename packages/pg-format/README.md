@@ -13,18 +13,24 @@ yarn add @graphile/pg-format
 ## Usage
 
 ```typescript
-import format from '@graphile/pg-format';
+import { format } from "@graphile/pg-format";
 
 // Basic usage
-const sql = format('SELECT %I FROM %I WHERE %I = %L', 'name', 'users', 'id', 123);
+const sql = format(
+  "SELECT %I FROM %I WHERE %I = %L",
+  "name",
+  "users",
+  "id",
+  123,
+);
 // => SELECT name FROM users WHERE id = '123'
 
 // Using positional arguments
-const sql2 = format('SELECT %2$I FROM %1$I', 'users', 'name');
+const sql2 = format("SELECT %2$I FROM %1$I", "users", "name");
 // => SELECT name FROM users
 
 // Escaping identifiers
-const sql3 = format('SELECT %I FROM users', 'user-name');
+const sql3 = format("SELECT %I FROM users", "user-name");
 // => SELECT "user-name" FROM users
 
 // Escaping literals
@@ -68,16 +74,17 @@ Configure custom format patterns:
 ```typescript
 config({
   pattern: {
-    ident: 'i',    // Use %i instead of %I
-    literal: 'l',  // Use %l instead of %L
-    string: 'S'    // Use %S instead of %s
-  }
+    ident: "i", // Use %i instead of %I
+    literal: "l", // Use %l instead of %L
+    string: "S", // Use %S instead of %s
+  },
 });
 ```
 
 ## Type Support
 
 The package properly handles:
+
 - Strings (with quote escaping)
 - Numbers
 - Booleans (`true`/`false` → `'t'`/`'f'`)
@@ -92,17 +99,17 @@ The package properly handles:
 ### Building Dynamic Queries
 
 ```typescript
-const columns = ['id', 'name', 'email'];
-const table = 'users';
+const columns = ["id", "name", "email"];
+const table = "users";
 const conditions = { name: "John", age: 30 };
 
 const sql = format(
-  'SELECT %s FROM %I WHERE %s',
-  columns.map(c => format('%I', c)).join(', '),
+  "SELECT %s FROM %I WHERE %s",
+  columns.map((c) => format("%I", c)).join(", "),
   table,
   Object.entries(conditions)
-    .map(([key, value]) => format('%I = %L', key, value))
-    .join(' AND ')
+    .map(([key, value]) => format("%I = %L", key, value))
+    .join(" AND "),
 );
 // => SELECT id, name, email FROM users WHERE name = 'John' AND age = '30'
 ```
@@ -110,17 +117,17 @@ const sql = format(
 ### Safe Table Creation
 
 ```typescript
-const tableName = 'user_data';
+const tableName = "user_data";
 const columns = [
-  { name: 'id', type: 'SERIAL PRIMARY KEY' },
-  { name: 'name', type: 'TEXT NOT NULL' },
-  { name: 'created_at', type: 'TIMESTAMP DEFAULT NOW()' }
+  { name: "id", type: "SERIAL PRIMARY KEY" },
+  { name: "name", type: "TEXT NOT NULL" },
+  { name: "created_at", type: "TIMESTAMP DEFAULT NOW()" },
 ];
 
 const sql = format(
-  'CREATE TABLE %I (%s)',
+  "CREATE TABLE %I (%s)",
   tableName,
-  columns.map(col => format('%I %s', col.name, col.type)).join(', ')
+  columns.map((col) => format("%I %s", col.name, col.type)).join(", "),
 );
 // => CREATE TABLE user_data (id SERIAL PRIMARY KEY, name TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW())
 ```
@@ -128,6 +135,7 @@ const sql = format(
 ## Differences from node-pg-format
 
 This is a modern TypeScript rewrite of the original `pg-format` package with:
+
 - Full TypeScript support with proper types
 - Modern ES modules support
 - Cleaner codebase using modern JavaScript features

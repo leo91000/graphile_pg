@@ -2,7 +2,7 @@
  * PostgreSQL reserved words
  * @see https://www.postgresql.org/docs/current/sql-keywords-appendix.html
  */
-export const RESERVED_WORDS = new Set([
+export const RESERVED_WORDS: Set<string> = new Set([
   "AES128",
   "AES256",
   "ALL",

@@ -1,29 +1,27 @@
 import { describe, it, expect } from "vitest";
-import format, { ident, literal, string, withArray, config } from "../index";
+import { format, ident, literal, string, withArray, config } from "../index";
 
 describe("pg-format", () => {
   describe("format()", () => {
     it("should format %I identifiers", () => {
       expect(format("SELECT %I FROM %I", "name", "users")).toBe(
-        'SELECT name FROM users'
+        "SELECT name FROM users",
       );
     });
 
     it("should format %L literals", () => {
       expect(format("SELECT * FROM users WHERE name = %L", "John")).toBe(
-        "SELECT * FROM users WHERE name = 'John'"
+        "SELECT * FROM users WHERE name = 'John'",
       );
     });
 
     it("should format %s strings", () => {
-      expect(format("SELECT * FROM %s", "users")).toBe(
-        "SELECT * FROM users"
-      );
+      expect(format("SELECT * FROM %s", "users")).toBe("SELECT * FROM users");
     });
 
     it("should handle positional arguments", () => {
       expect(format("SELECT %2$I FROM %1$I", "users", "name")).toBe(
-        "SELECT name FROM users"
+        "SELECT name FROM users",
       );
     });
 
@@ -33,17 +31,26 @@ describe("pg-format", () => {
 
     it("should handle mixed types", () => {
       expect(
-        format("INSERT INTO %I (%I, %I) VALUES (%L, %L)", "users", "name", "age", "John", 25)
+        format(
+          "INSERT INTO %I (%I, %I) VALUES (%L, %L)",
+          "users",
+          "name",
+          "age",
+          "John",
+          25,
+        ),
       ).toBe("INSERT INTO users (name, age) VALUES ('John', '25')");
     });
 
     it("should throw on too few arguments", () => {
-      expect(() => format("SELECT %I, %I FROM users", "name")).toThrow("too few arguments");
+      expect(() => format("SELECT %I, %I FROM users", "name")).toThrow(
+        "too few arguments",
+      );
     });
 
     it("should throw on invalid positional argument", () => {
       expect(() => format("SELECT %0$I FROM users", "name")).toThrow(
-        "specified argument 0 but arguments start at 1"
+        "specified argument 0 but arguments start at 1",
       );
     });
   });
@@ -82,21 +89,29 @@ describe("pg-format", () => {
     });
 
     it("should throw on null/undefined", () => {
-      expect(() => ident(null)).toThrow("SQL identifier cannot be null or undefined");
-      expect(() => ident(undefined)).toThrow("SQL identifier cannot be null or undefined");
+      expect(() => ident(null)).toThrow(
+        "SQL identifier cannot be null or undefined",
+      );
+      expect(() => ident(undefined)).toThrow(
+        "SQL identifier cannot be null or undefined",
+      );
     });
 
     it("should throw on Buffer", () => {
-      expect(() => ident(Buffer.from("test"))).toThrow("SQL identifier cannot be a buffer");
+      expect(() => ident(Buffer.from("test"))).toThrow(
+        "SQL identifier cannot be a buffer",
+      );
     });
 
     it("should throw on objects", () => {
-      expect(() => ident({ name: "test" })).toThrow("SQL identifier cannot be an object");
+      expect(() => ident({ name: "test" })).toThrow(
+        "SQL identifier cannot be an object",
+      );
     });
 
     it("should throw on nested arrays", () => {
       expect(() => ident([["a", "b"], "c"])).toThrow(
-        "Nested array to grouped list conversion is not supported for SQL identifier"
+        "Nested array to grouped list conversion is not supported for SQL identifier",
       );
     });
   });
@@ -149,13 +164,27 @@ describe("pg-format", () => {
     });
 
     it("should handle nested arrays", () => {
-      expect(literal([[1, 2], [3, 4]])).toBe("('1', '2'), ('3', '4')");
-      expect(literal([["a", "b"], ["c", "d"]])).toBe("('a', 'b'), ('c', 'd')");
+      expect(
+        literal([
+          [1, 2],
+          [3, 4],
+        ]),
+      ).toBe("('1', '2'), ('3', '4')");
+      expect(
+        literal([
+          ["a", "b"],
+          ["c", "d"],
+        ]),
+      ).toBe("('a', 'b'), ('c', 'd')");
     });
 
     it("should handle objects as JSONB", () => {
-      expect(literal({ name: "John", age: 30 })).toBe('\'{"name":"John","age":30}\'::jsonb');
-      expect(literal({ items: [1, 2, 3] })).toBe('\'{"items":[1,2,3]}\'::jsonb');
+      expect(literal({ name: "John", age: 30 })).toBe(
+        '\'{"name":"John","age":30}\'::jsonb',
+      );
+      expect(literal({ items: [1, 2, 3] })).toBe(
+        "'{\"items\":[1,2,3]}'::jsonb",
+      );
     });
   });
 
@@ -196,19 +225,31 @@ describe("pg-format", () => {
     });
 
     it("should handle nested arrays", () => {
-      expect(string([[1, 2], [3, 4]])).toBe("(1, 2), (3, 4)");
+      expect(
+        string([
+          [1, 2],
+          [3, 4],
+        ]),
+      ).toBe("(1, 2), (3, 4)");
     });
 
     it("should handle objects as JSON", () => {
-      expect(string({ name: "John", age: 30 })).toBe('{"name":"John","age":30}');
+      expect(string({ name: "John", age: 30 })).toBe(
+        '{"name":"John","age":30}',
+      );
     });
   });
 
   describe("withArray()", () => {
     it("should format with array of values", () => {
-      expect(withArray("SELECT %I FROM %I WHERE %I = %L", ["name", "users", "id", 1])).toBe(
-        "SELECT name FROM users WHERE id = '1'"
-      );
+      expect(
+        withArray("SELECT %I FROM %I WHERE %I = %L", [
+          "name",
+          "users",
+          "id",
+          1,
+        ]),
+      ).toBe("SELECT name FROM users WHERE id = '1'");
     });
 
     it("should handle empty array", () => {
@@ -219,13 +260,13 @@ describe("pg-format", () => {
   describe("config()", () => {
     it("should allow custom patterns", () => {
       config({ pattern: { ident: "i", literal: "l", string: "S" } });
-      
+
       expect(format("SELECT %i FROM users WHERE name = %l", "id", "John")).toBe(
-        "SELECT id FROM users WHERE name = 'John'"
+        "SELECT id FROM users WHERE name = 'John'",
       );
-      
+
       expect(format("SELECT * FROM %S", "users")).toBe("SELECT * FROM users");
-      
+
       // Reset to defaults
       config({});
     });

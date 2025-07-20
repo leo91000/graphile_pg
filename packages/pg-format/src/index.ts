@@ -8,7 +8,16 @@ export interface FormatConfig {
   };
 }
 
-type FormatValue = string | number | boolean | Date | Buffer | null | undefined | FormatValue[] | Record<string, any>;
+type FormatValue =
+  | string
+  | number
+  | boolean
+  | Date
+  | Buffer
+  | null
+  | undefined
+  | FormatValue[]
+  | Record<string, any>;
 
 // Default format patterns
 let formatPattern = {
@@ -38,14 +47,14 @@ function isReserved(value: string): boolean {
 function arrayToList(
   useSpace: boolean,
   array: FormatValue[],
-  formatter: (value: FormatValue) => string
+  formatter: (value: FormatValue) => string,
 ): string {
   let sql = useSpace ? "(" : "(";
-  
+
   for (let i = 0; i < array.length; i++) {
     sql += (i === 0 ? "" : ", ") + formatter(array[i]);
   }
-  
+
   sql += ")";
   return sql;
 }
@@ -58,34 +67,36 @@ export function quoteIdent(value: FormatValue): string {
   if (value === undefined || value === null) {
     throw new Error("SQL identifier cannot be null or undefined");
   }
-  
+
   if (value === false) {
     return '"f"';
   }
-  
+
   if (value === true) {
     return '"t"';
   }
-  
+
   if (value instanceof Date) {
     return `"${formatDate(value)}"`;
   }
-  
+
   if (value instanceof Buffer) {
     throw new Error("SQL identifier cannot be a buffer");
   }
-  
+
   if (Array.isArray(value)) {
     const temp: string[] = [];
     for (const item of value) {
       if (Array.isArray(item)) {
-        throw new Error("Nested array to grouped list conversion is not supported for SQL identifier");
+        throw new Error(
+          "Nested array to grouped list conversion is not supported for SQL identifier",
+        );
       }
       temp.push(quoteIdent(item));
     }
     return temp.join(", ");
   }
-  
+
   if (typeof value === "object" && value !== null) {
     throw new Error("SQL identifier cannot be an object");
   }
@@ -115,38 +126,40 @@ export function quoteLiteral(value: FormatValue): string {
   if (value === undefined || value === null) {
     return "NULL";
   }
-  
+
   if (value === false) {
     return "'f'";
   }
-  
+
   if (value === true) {
     return "'t'";
   }
-  
+
   if (value instanceof Date) {
     return `'${formatDate(value)}'`;
   }
-  
+
   if (value instanceof Buffer) {
     return `E'\\\\x${value.toString("hex")}'`;
   }
-  
+
   if (Array.isArray(value)) {
     const temp: string[] = [];
     for (let i = 0; i < value.length; i++) {
       if (Array.isArray(value[i])) {
-        temp.push(arrayToList(i !== 0, value[i] as FormatValue[], quoteLiteral));
+        temp.push(
+          arrayToList(i !== 0, value[i] as FormatValue[], quoteLiteral),
+        );
       } else {
         temp.push(quoteLiteral(value[i]));
       }
     }
     return temp.join(", ");
   }
-  
+
   let literal: string;
   let explicitCast: string | null = null;
-  
+
   if (typeof value === "object" && value !== null) {
     explicitCast = "jsonb";
     literal = JSON.stringify(value);
@@ -156,7 +169,7 @@ export function quoteLiteral(value: FormatValue): string {
 
   let hasBackslash = false;
   let quoted = "'";
-  
+
   for (const char of literal) {
     if (char === "'") {
       quoted += "''";
@@ -167,7 +180,7 @@ export function quoteLiteral(value: FormatValue): string {
       quoted += char;
     }
   }
-  
+
   quoted += "'";
 
   if (hasBackslash) {
@@ -188,29 +201,31 @@ export function quoteString(value: FormatValue): string {
   if (value === undefined || value === null) {
     return "";
   }
-  
+
   if (value === false) {
     return "f";
   }
-  
+
   if (value === true) {
     return "t";
   }
-  
+
   if (value instanceof Date) {
     return formatDate(value);
   }
-  
+
   if (value instanceof Buffer) {
     return `\\x${value.toString("hex")}`;
   }
-  
+
   if (Array.isArray(value)) {
     const temp: string[] = [];
     for (let i = 0; i < value.length; i++) {
       if (value[i] !== null && value[i] !== undefined) {
         if (Array.isArray(value[i])) {
-          temp.push(arrayToList(i !== 0, value[i] as FormatValue[], quoteString));
+          temp.push(
+            arrayToList(i !== 0, value[i] as FormatValue[], quoteString),
+          );
         } else {
           temp.push(quoteString(value[i]));
         }
@@ -218,7 +233,7 @@ export function quoteString(value: FormatValue): string {
     }
     return temp.join(", ");
   }
-  
+
   if (typeof value === "object" && value !== null) {
     return JSON.stringify(value);
   }
@@ -259,7 +274,7 @@ export function withArray(fmt: string, parameters: FormatValue[]): string {
   // Build regex pattern dynamically based on current format patterns
   const re = new RegExp(
     `%(%|(\\d+\\$)?[${formatPattern.ident}${formatPattern.literal}${formatPattern.string}])`,
-    "g"
+    "g",
   );
 
   return fmt.replace(re, (match, type) => {
@@ -278,7 +293,7 @@ export function withArray(fmt: string, parameters: FormatValue[]): string {
     if (position < 0) {
       throw new Error("specified argument 0 but arguments start at 1");
     }
-    
+
     if (position > parameters.length - 1) {
       throw new Error("too few arguments");
     }
@@ -288,11 +303,11 @@ export function withArray(fmt: string, parameters: FormatValue[]): string {
     if (type === formatPattern.ident) {
       return quoteIdent(parameters[position]);
     }
-    
+
     if (type === formatPattern.literal) {
       return quoteLiteral(parameters[position]);
     }
-    
+
     if (type === formatPattern.string) {
       return quoteString(parameters[position]);
     }
@@ -309,12 +324,5 @@ export function format(fmt: string, ...args: FormatValue[]): string {
   return withArray(fmt, args);
 }
 
-// Default export
-export default format;
-
 // Named exports for compatibility
-export {
-  quoteIdent as ident,
-  quoteLiteral as literal,
-  quoteString as string,
-};
+export { quoteIdent as ident, quoteLiteral as literal, quoteString as string };
