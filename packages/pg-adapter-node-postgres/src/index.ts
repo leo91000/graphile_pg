@@ -47,7 +47,8 @@ export async function createNodePostgresPool(
   poolConfig?: PoolConfig,
 ): Promise<PgPoolAdapter> {
   const pool = new pg.Pool(poolConfig) as Pool;
-  const connection = createNodePostgresConnection(pool);
+  const maxPoolSize = poolConfig?.max ?? 10; // default is 10
+  const connection = createNodePostgresConnection(pool, maxPoolSize);
   return createPgPool(connection);
 }
 
@@ -71,7 +72,10 @@ function wrapError(error: unknown): PgAdapterError {
   return new PgAdapterError(message, undefined, error);
 }
 
-function createNodePostgresConnection(pool: Pool): PgConnection {
+function createNodePostgresConnection(
+  pool: Pool,
+  maxPoolSize: number,
+): PgConnection {
   let closed = false;
 
   async function withPgClient<T>(
@@ -167,7 +171,7 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
     },
 
     getPoolSize(): number {
-      return pool.totalCount;
+      return maxPoolSize;
     },
 
     async end(): Promise<void> {

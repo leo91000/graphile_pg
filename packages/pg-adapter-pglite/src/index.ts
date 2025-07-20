@@ -6,7 +6,6 @@
 import {
   PGlite,
   type PGliteOptions,
-  type Results,
   type Transaction,
 } from "@electric-sql/pglite";
 import type {
@@ -72,7 +71,7 @@ function createPGLiteConnection(db: PGlite): PgConnection {
     async execute(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean },
+      _options?: { prepare?: boolean },
     ): Promise<void> {
       try {
         await db.query(sql, params);
@@ -84,7 +83,7 @@ function createPGLiteConnection(db: PGlite): PgConnection {
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean },
+      _options?: { prepare?: boolean },
     ): Promise<PgQueryResult<T>> {
       try {
         const result = await db.query<T>(sql, params);
@@ -165,7 +164,7 @@ function createPGLiteClient(
     async execute(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean },
+      _options?: { prepare?: boolean },
     ): Promise<void> {
       try {
         await db.query(sql, params);
@@ -177,7 +176,7 @@ function createPGLiteClient(
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean },
+      _options?: { prepare?: boolean },
     ): Promise<PgQueryResult<T>> {
       try {
         const result = await db.query<T>(sql, params);
@@ -205,7 +204,7 @@ function createPGLiteTransactionClient(
     async execute(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean },
+      _options?: { prepare?: boolean },
     ): Promise<void> {
       try {
         await tx.query(sql, params);
@@ -217,7 +216,7 @@ function createPGLiteTransactionClient(
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean },
+      _options?: { prepare?: boolean },
     ): Promise<PgQueryResult<T>> {
       try {
         const result = await tx.query<T>(sql, params);
