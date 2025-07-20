@@ -66,11 +66,10 @@ await pool.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
   "john@example.com",
 ]);
 
-// Query with streaming results
-const result = pool.query("SELECT * FROM users");
-for await (const row of result) {
-  console.log(row);
-}
+// Query and get all results
+const result = await pool.query("SELECT * FROM users");
+console.log(result.rows); // Array of all users
+console.log(result.rowCount); // Number of rows returned
 ```
 
 ### Transactions

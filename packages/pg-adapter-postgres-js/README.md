@@ -51,24 +51,16 @@ const pool = createPostgresJsPool(
 );
 ```
 
-### Streaming Queries
+### Basic Queries
 
 ```typescript
-// Stream rows one by one for memory efficiency
-const result = pool.query("SELECT * FROM large_table");
-for await (const row of result) {
-  console.log(row);
-}
+// Execute a query and get all results
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+console.log(result.rows); // Array of all matching rows
+console.log(result.rowCount); // Number of rows returned
 
-// Process in batches
-for await (const batch of result.batches(100)) {
-  console.log(`Processing ${batch.length} rows`);
-  // Process batch...
-}
-
-// Get just the count without loading all rows
-const count = await pool.query("SELECT * FROM users").count();
-console.log(`Total users: ${count}`);
+// Execute without returning results
+await pool.execute("UPDATE users SET last_login = NOW() WHERE id = $1", [123]);
 ```
 
 ### Transactions

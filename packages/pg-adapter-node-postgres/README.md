@@ -12,16 +12,6 @@ yarn add @graphile/pg-core @graphile/pg-adapter-node-postgres pg
 
 ## Usage
 
-### Basic Connection
-
-```typescript
-import { createNodePostgresConnection } from "@graphile/pg-adapter-node-postgres";
-
-const connection = await createNodePostgresConnection(
-  "postgresql://user:pass@localhost:5432/mydb",
-);
-```
-
 ### Connection Pool
 
 ```typescript
@@ -39,25 +29,19 @@ const pgPool = new Pool({ max: 50 });
 const pool2 = createNodePostgresPool(pgPool);
 ```
 
-### Streaming Queries
+### Basic Queries
 
 ```typescript
-// Stream rows one by one
-const result = connection.query("SELECT * FROM large_table");
-for await (const row of result) {
-  console.log(row);
-}
-
-// Process in batches for better performance
-for await (const batch of result.batches(100)) {
-  console.log(`Processing ${batch.length} rows`);
-}
+// Execute a query and get all results
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+console.log(result.rows); // Array of all matching rows
+console.log(result.rowCount); // Number of rows returned
 ```
 
 ### Transactions
 
 ```typescript
-await connection.transaction(async (tx) => {
+await pool.withTransaction(async (tx) => {
   await tx.execute("UPDATE users SET active = false WHERE id = $1", [123]);
   await tx.execute("INSERT INTO audit_log (action) VALUES ($1)", [
     "user_deactivated",
@@ -68,12 +52,12 @@ await connection.transaction(async (tx) => {
 ### LISTEN/NOTIFY
 
 ```typescript
-const listener = await connection.listen("my_channel", (payload) => {
+const listener = await pool.listen("my_channel", (payload) => {
   console.log("Received:", payload);
 });
 
 // Send notification
-await connection.notify("my_channel", "Hello World");
+await pool.notify("my_channel", "Hello World");
 
 // Stop listening
 await listener.unlisten();
@@ -81,10 +65,10 @@ await listener.unlisten();
 
 ## Configuration
 
-All [node-postgres configuration options](https://node-postgres.com/apis/client) are supported:
+All [node-postgres configuration options](https://node-postgres.com/apis/pool) are supported:
 
 ```typescript
-const connection = await createNodePostgresConnection({
+const pool = createNodePostgresPool({
   host: "localhost",
   port: 5432,
   database: "mydb",

@@ -18,23 +18,17 @@ yarn add @graphile/pg-core
 - `PgListener` - LISTEN/NOTIFY interface
 - `PgAdapterError` - Base error class for adapter-specific errors
 
-## Stream-First Design
+## Query Results
 
-The core design philosophy is stream-first for memory efficiency:
+Query results include metadata and rows:
 
 ```typescript
-// Process rows one by one
-for await (const row of result) {
-  console.log(row);
-}
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
 
-// Process in batches
-for await (const batch of result.batches(100)) {
-  processBatch(batch);
-}
-
-// Get count without loading all rows
-const count = await result.count();
+console.log(result.rows);     // Array of row objects
+console.log(result.rowCount); // Number of rows returned
+console.log(result.command);  // SQL command (e.g., "SELECT")
+console.log(result.fields);   // Column metadata (if available)
 ```
 
 ## SQL Formatting Utilities
