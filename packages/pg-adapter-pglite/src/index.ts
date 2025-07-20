@@ -19,14 +19,23 @@ import { PgAdapterError, createPgPool } from "@graphile/pg-core";
 
 /**
  * Create a PostgreSQL connection using PGLite
+ * @param dataDirOrDb - Either a data directory path (or undefined for in-memory) or a pre-configured PGLite instance
+ * @param options - PGLite options (only used when creating a new instance)
  */
 export async function createPGLitePool(
-  dataDir?: string,
+  dataDirOrDb?: string | PGlite,
   options?: PGliteOptions,
 ): Promise<PgPoolAdapter> {
-  // Dynamic import to support both CJS and ESM
-  const db = new PGlite(dataDir, options);
-  await db.waitReady;
+  let db: PGlite;
+
+  if (dataDirOrDb instanceof PGlite) {
+    // Pre-configured PGLite instance provided
+    db = dataDirOrDb;
+  } else {
+    // Data directory path provided (or undefined for in-memory)
+    db = new PGlite(dataDirOrDb, options);
+    await db.waitReady;
+  }
 
   const connection = createPGLiteConnection(db);
   return createPgPool(connection);

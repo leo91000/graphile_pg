@@ -27,10 +27,16 @@ const connection = await createNodePostgresConnection(
 ```typescript
 import { createNodePostgresPool } from "@graphile/pg-adapter-node-postgres";
 
+// Option 1: Pass configuration (creates a new pool)
 const pool = await createNodePostgresPool({
   connectionString: "postgresql://user:pass@localhost:5432/mydb",
   max: 10,
 });
+
+// Option 2: Pass a pre-configured pg Pool instance
+import { Pool } from "pg";
+const pgPool = new Pool({ max: 50 });
+const pool2 = await createNodePostgresPool(pgPool);
 ```
 
 ### Streaming Queries

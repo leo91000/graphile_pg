@@ -15,34 +15,47 @@ yarn add @graphile/pg-core @graphile/pg-adapter-postgres-js postgres
 ### Basic Connection
 
 ```typescript
-import { createPostgresJsConnection } from "@graphile/pg-adapter-postgres-js";
+import { createPostgresJsPool } from "@graphile/pg-adapter-postgres-js";
 
-const connection = await createPostgresJsConnection(
+// Option 1: Pass connection string and options (creates a new sql instance)
+const pool = await createPostgresJsPool(
   "postgresql://user:pass@localhost:5432/mydb",
+  {
+    max: 10,
+    idle_timeout: 30,
+  }
 );
+
+// Option 2: Pass a pre-configured postgres.js sql instance
+import postgres from "postgres";
+const sql = postgres({ max: 50 });
+const pool2 = await createPostgresJsPool(sql);
 ```
 
 ### Connection with Options
 
 ```typescript
-import { createPostgresJsConnection } from "@graphile/pg-adapter-postgres-js";
+import { createPostgresJsPool } from "@graphile/pg-adapter-postgres-js";
 
-const connection = await createPostgresJsConnection({
-  host: "localhost",
-  port: 5432,
-  database: "mydb",
-  username: "postgres",
-  password: "secret",
-  max: 10,
-  idle_timeout: 30,
-});
+const pool = await createPostgresJsPool(
+  "postgresql://user:pass@localhost:5432/mydb",
+  {
+    host: "localhost",
+    port: 5432,
+    database: "mydb",
+    username: "postgres",
+    password: "secret",
+    max: 10,
+    idle_timeout: 30,
+  }
+);
 ```
 
 ### Streaming Queries
 
 ```typescript
 // Stream rows one by one for memory efficiency
-const result = connection.query("SELECT * FROM large_table");
+const result = pool.query("SELECT * FROM large_table");
 for await (const row of result) {
   console.log(row);
 }
@@ -54,14 +67,14 @@ for await (const batch of result.batches(100)) {
 }
 
 // Get just the count without loading all rows
-const count = await connection.query("SELECT * FROM users").count();
+const count = await pool.query("SELECT * FROM users").count();
 console.log(`Total users: ${count}`);
 ```
 
 ### Transactions
 
 ```typescript
-await connection.transaction(async (tx) => {
+await pool.withTransaction(async (tx) => {
   await tx.execute("UPDATE users SET active = false WHERE id = $1", [123]);
   await tx.execute("INSERT INTO audit_log (action) VALUES ($1)", [
     "user_deactivated",
@@ -72,12 +85,12 @@ await connection.transaction(async (tx) => {
 ### LISTEN/NOTIFY
 
 ```typescript
-const listener = await connection.listen("my_channel", (payload) => {
+const listener = await pool.listen("my_channel", (payload) => {
   console.log("Received:", payload);
 });
 
 // Send notification
-await connection.notify("my_channel", "Hello World");
+await pool.execute("NOTIFY my_channel, 'Hello World'");
 
 // Stop listening
 await listener.unlisten();
@@ -88,17 +101,20 @@ await listener.unlisten();
 All [postgres.js configuration options](https://github.com/porsager/postgres#all-postgres-options) are supported:
 
 ```typescript
-const connection = await createPostgresJsConnection({
-  host: "localhost",
-  port: 5432,
-  database: "mydb",
-  username: "postgres",
-  password: "secret",
-  ssl: true,
-  max: 20,
-  idle_timeout: 30,
-  connect_timeout: 60,
-});
+const pool = await createPostgresJsPool(
+  "postgresql://user:pass@localhost:5432/mydb",
+  {
+    host: "localhost",
+    port: 5432,
+    database: "mydb",
+    username: "postgres",
+    password: "secret",
+    ssl: true,
+    max: 20,
+    idle_timeout: 30,
+    connect_timeout: 60,
+  }
+);
 ```
 
 ## Performance Benefits

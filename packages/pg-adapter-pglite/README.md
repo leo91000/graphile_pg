@@ -15,39 +15,45 @@ yarn add @graphile/pg-core @graphile/pg-adapter-pglite @electric-sql/pglite
 ### In-Memory Database
 
 ```typescript
-import { createPgLiteConnection } from "@graphile/pg-adapter-pglite";
+import { createPGLitePool } from "@graphile/pg-adapter-pglite";
 
-// Create an in-memory database
-const connection = await createPgLiteConnection();
+// Option 1: Create a new in-memory database
+const pool = await createPGLitePool();
+
+// Option 2: Pass a pre-configured PGLite instance
+import { PGlite } from "@electric-sql/pglite";
+const db = new PGlite();
+const pool2 = await createPGLitePool(db);
 ```
 
 ### Persistent Database
 
 ```typescript
-import { createPgLiteConnection } from "@graphile/pg-adapter-pglite";
+import { createPGLitePool } from "@graphile/pg-adapter-pglite";
 
-// Create a persistent database (Node.js only)
-const connection = await createPgLiteConnection({
-  dataDir: "./my-database",
-});
+// Option 1: Create a persistent database (Node.js only)
+const pool = await createPGLitePool("./my-database");
+
+// Option 2: Pass a pre-configured PGLite instance
+import { PGlite } from "@electric-sql/pglite";
+const db = new PGlite("./my-database");
+const pool2 = await createPGLitePool(db);
 ```
 
 ### Browser Usage
 
 ```typescript
-import { createPgLiteConnection } from "@graphile/pg-adapter-pglite";
+import { createPGLitePool } from "@graphile/pg-adapter-pglite";
 
 // In the browser - uses IndexedDB for persistence
-const connection = await createPgLiteConnection({
-  dataDir: "idb://my-database",
-});
+const pool = await createPGLitePool("idb://my-database");
 ```
 
 ### Basic Operations
 
 ```typescript
 // Create tables and insert data
-await connection.execute(`
+await pool.execute(`
   CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -55,13 +61,13 @@ await connection.execute(`
   )
 `);
 
-await connection.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
+await pool.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
   "John Doe",
   "john@example.com",
 ]);
 
 // Query with streaming results
-const result = connection.query("SELECT * FROM users");
+const result = pool.query("SELECT * FROM users");
 for await (const row of result) {
   console.log(row);
 }
@@ -70,7 +76,7 @@ for await (const row of result) {
 ### Transactions
 
 ```typescript
-await connection.transaction(async (tx) => {
+await pool.withTransaction(async (tx) => {
   await tx.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
     "Alice",
     "alice@example.com",
@@ -87,14 +93,14 @@ await connection.transaction(async (tx) => {
 PGLite supports many PostgreSQL extensions:
 
 ```typescript
-const connection = await createPgLiteConnection({
+const pool = await createPGLitePool(undefined, {
   extensions: {
     vector: "https://unpkg.com/@electric-sql/pglite/dist/vector.js",
   },
 });
 
 // Now you can use vector operations
-await connection.execute("CREATE EXTENSION vector");
+await pool.execute("CREATE EXTENSION vector");
 ```
 
 ## Use Cases
@@ -115,8 +121,7 @@ await connection.execute("CREATE EXTENSION vector");
 ## Configuration Options
 
 ```typescript
-const connection = await createPgLiteConnection({
-  dataDir: "./data", // Data directory (optional)
+const pool = await createPGLitePool("./data", {
   debug: true, // Enable debug logging
   extensions: {}, // Extensions to load
   relaxedDurability: true, // Faster writes, less durability

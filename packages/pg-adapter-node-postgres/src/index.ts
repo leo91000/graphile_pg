@@ -42,12 +42,27 @@ function generatePreparedStatementName(sql: string, params?: any[]): string {
 
 /**
  * Create a PostgreSQL connection using node-postgres (pg)
+ * @param poolOrConfig - Either a pre-configured Pool instance or PoolConfig options
  */
 export async function createNodePostgresPool(
-  poolConfig?: PoolConfig,
+  poolOrConfig?: Pool | PoolConfig,
 ): Promise<PgPoolAdapter> {
-  const pool = new pg.Pool(poolConfig) as Pool;
-  const maxPoolSize = poolConfig?.max ?? 10; // default is 10
+  let pool: Pool;
+  let maxPoolSize: number;
+
+  if (poolOrConfig && "connect" in poolOrConfig && "query" in poolOrConfig) {
+    // Pre-configured Pool instance provided
+    pool = poolOrConfig;
+    // For pre-configured pools, we can't know the max size unless it's exposed
+    // We'll use totalCount as a fallback, but document this limitation
+    maxPoolSize = (poolOrConfig as any).options?.max ?? 10;
+  } else {
+    // Configuration object provided (or undefined)
+    const poolConfig = poolOrConfig as PoolConfig | undefined;
+    pool = new pg.Pool(poolConfig) as Pool;
+    maxPoolSize = poolConfig?.max ?? 10; // default is 10
+  }
+
   const connection = createNodePostgresConnection(pool, maxPoolSize);
   return createPgPool(connection);
 }

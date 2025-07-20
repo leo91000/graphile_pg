@@ -21,12 +21,30 @@ export async function createPostgresJsPool<
 >(
   connectionString: string,
   options?: postgres.Options<T> | undefined,
+): Promise<PgPoolAdapter>;
+export async function createPostgresJsPool(sql: Sql): Promise<PgPoolAdapter>;
+export async function createPostgresJsPool<
+  T extends Record<string, postgres.PostgresType> = {},
+>(
+  connectionStringOrSql: string | Sql,
+  options?: postgres.Options<T> | undefined,
 ): Promise<PgPoolAdapter> {
-  const sql = postgres(connectionString, options);
-  const connection = createPostgresJsConnectionInternal(
-    sql,
-    options?.max ?? 10,
-  );
+  let sql: Sql;
+  let maxPoolSize: number;
+
+  if (typeof connectionStringOrSql === "string") {
+    // Connection string provided - create new instance
+    sql = postgres(connectionStringOrSql, options);
+    maxPoolSize = options?.max ?? 10;
+  } else {
+    // Pre-configured Sql instance provided
+    sql = connectionStringOrSql;
+    // For pre-configured instances, we can't know the max size
+    // Use the default as a fallback
+    maxPoolSize = 10;
+  }
+
+  const connection = createPostgresJsConnectionInternal(sql, maxPoolSize);
   return createPgPool(connection);
 }
 
