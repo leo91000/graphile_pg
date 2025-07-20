@@ -1,5 +1,6 @@
 import { describe } from "vitest";
 import crypto from "node:crypto";
+import { ident } from "@graphile/pg-format";
 import { createIntegrationTestSuite } from "../../../../test/integration-suite";
 import { createNodePostgresPool } from "../index";
 
@@ -16,7 +17,7 @@ describe("@graphile/pg-adapter-pg integration tests", () => {
       connectionString: baseUrl,
     });
     // Execute the query and wait for completion
-    await setupPool.execute(`CREATE DATABASE "${dbName}"`);
+    await setupPool.execute(`CREATE DATABASE ${ident(dbName)}`);
     await setupPool.end();
 
     // Connect to the test database
@@ -33,7 +34,7 @@ describe("@graphile/pg-adapter-pg integration tests", () => {
       const cleanupPool = await createNodePostgresPool({
         connectionString: baseUrl,
       });
-      await cleanupPool.execute(`DROP DATABASE IF EXISTS "${dbName}"`);
+      await cleanupPool.execute(`DROP DATABASE IF EXISTS ${ident(dbName)}`);
       await cleanupPool.end();
     };
 

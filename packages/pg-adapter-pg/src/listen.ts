@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { ident } from "@graphile/pg-format";
 
 export interface ListenError extends Error {
   /** The original error that caused the failure */
@@ -29,8 +30,8 @@ export function createListenClient(config: ListenConfig): {
   let attempts = 0;
   const MAX_DELAY = 60_000; // 60 seconds max delay
 
-  // Escape channel name once
-  const escapedChannel = `"${channel.replace(/"/g, '""')}"`;
+  // Escape channel name once using standardized function
+  const escapedChannel = ident(channel);
 
   const cleanup = async () => {
     stopped = true;

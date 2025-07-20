@@ -9,7 +9,11 @@ describe("postgres.js error handling", () => {
   let connection: Awaited<ReturnType<typeof createPostgresJsPool>>;
 
   beforeAll(async () => {
-    connection = await createPostgresJsPool(DATABASE_URL);
+    connection = await createPostgresJsPool(DATABASE_URL, {
+      onnotice: () => {
+        // Suppress PostgreSQL notices in tests to avoid cluttering output
+      },
+    });
   });
 
   afterAll(async () => {

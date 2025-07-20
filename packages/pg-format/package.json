@@ -1,0 +1,46 @@
+{
+  "name": "@graphile/pg-format",
+  "version": "0.0.0",
+  "description": "Node.js implementation of PostgreSQL format() to safely create dynamic SQL queries",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format cjs,esm",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepack": "yarn run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/graphile/pg.git",
+    "directory": "packages/pg-format"
+  },
+  "keywords": [
+    "postgres",
+    "format",
+    "escape",
+    "sql"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.19.9",
+    "tsdown": "^0.12.9",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}
