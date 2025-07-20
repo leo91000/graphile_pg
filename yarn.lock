@@ -371,7 +371,6 @@ __metadata:
   resolution: "@graphile/pg-adapter-node-postgres@workspace:packages/pg-adapter-node-postgres"
   dependencies:
     "@graphile/pg-core": "workspace:^"
-    "@graphile/pg-format": "workspace:^"
     "@types/node": "npm:^22.16.5"
     "@types/pg": "npm:^8.15.4"
     pg: "npm:^8.16.3"
@@ -402,7 +401,6 @@ __metadata:
   resolution: "@graphile/pg-adapter-postgres-js@workspace:packages/pg-adapter-postgres-js"
   dependencies:
     "@graphile/pg-core": "workspace:^"
-    "@graphile/pg-format": "workspace:^"
     "@types/node": "npm:^22.16.5"
     eventemitter3: "npm:^5.0.1"
     postgres: "npm:^3.4.7"
@@ -421,17 +419,6 @@ __metadata:
     "@types/node": "npm:^22.16.5"
     tsdown: "npm:^0.12.9"
     typescript: "npm:^5.8.3"
-  languageName: unknown
-  linkType: soft
-
-"@graphile/pg-format@workspace:^, @graphile/pg-format@workspace:packages/pg-format":
-  version: 0.0.0-use.local
-  resolution: "@graphile/pg-format@workspace:packages/pg-format"
-  dependencies:
-    "@types/node": "npm:^20.19.9"
-    tsdown: "npm:^0.12.9"
-    typescript: "npm:^5.8.3"
-    vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
 
@@ -945,15 +932,6 @@ __metadata:
   dependencies:
     undici-types: "npm:~7.8.0"
   checksum: 10c0/11dbd869d3e12ee7b7818113588950e538783e45d227122174c763cb05977defbd1e01b44b5ccd4b8997e42c3df7f7b83c6ee05cfa43d924c8882886bc5f6582
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:^20.19.9":
-  version: 20.19.9
-  resolution: "@types/node@npm:20.19.9"
-  dependencies:
-    undici-types: "npm:~6.21.0"
-  checksum: 10c0/c6738131f1698258a5ac1e0185e4fc56977f7f566cd0ee11167f93f2339478470257bd82c5e1908a936a204e0ad7996d741356a1a07c04997a236161ea23a874
   languageName: node
   linkType: hard
 

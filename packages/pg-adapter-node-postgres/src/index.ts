@@ -87,7 +87,11 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
   }
 
   return {
-    async execute(sql: string, params?: any[], options?: { prepare?: boolean }): Promise<void> {
+    async execute(
+      sql: string,
+      params?: any[],
+      options?: { prepare?: boolean },
+    ): Promise<void> {
       try {
         if (options?.prepare) {
           const name = generatePreparedStatementName(sql, params);
@@ -103,14 +107,14 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean }
+      options?: { prepare?: boolean },
     ): Promise<PgQueryResult<T>> {
       try {
         const result = options?.prepare
-          ? await pool.query({ 
-              text: sql, 
-              values: params, 
-              name: generatePreparedStatementName(sql, params) 
+          ? await pool.query({
+              text: sql,
+              values: params,
+              name: generatePreparedStatementName(sql, params),
             })
           : await pool.query(sql, params);
         return {
@@ -179,7 +183,11 @@ function createNodePostgresClient(
 ): PgClient & { client: PoolClient } {
   return {
     client, // Expose for transaction handling
-    async execute(sql: string, params?: any[], options?: { prepare?: boolean }): Promise<void> {
+    async execute(
+      sql: string,
+      params?: any[],
+      options?: { prepare?: boolean },
+    ): Promise<void> {
       try {
         if (options?.prepare) {
           const name = generatePreparedStatementName(sql, params);
@@ -194,14 +202,14 @@ function createNodePostgresClient(
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-      options?: { prepare?: boolean }
+      options?: { prepare?: boolean },
     ): Promise<PgQueryResult<T>> {
       try {
         const result = options?.prepare
-          ? await client.query({ 
-              text: sql, 
-              values: params, 
-              name: generatePreparedStatementName(sql, params) 
+          ? await client.query({
+              text: sql,
+              values: params,
+              name: generatePreparedStatementName(sql, params),
             })
           : await client.query(sql, params);
         return {

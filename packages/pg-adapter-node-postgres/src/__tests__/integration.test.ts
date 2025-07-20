@@ -1,6 +1,6 @@
 import { describe } from "vitest";
 import crypto from "node:crypto";
-import { ident } from "@graphile/pg-format";
+import { ident } from "@graphile/pg-core";
 import { createIntegrationTestSuite } from "../../../../test/integration-suite";
 import { createNodePostgresPool } from "../index";
 

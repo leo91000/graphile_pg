@@ -4,8 +4,7 @@ PostgreSQL adapter system for Graphile tools. This monorepo provides a common in
 
 ## Packages
 
-- **[@graphile/pg-core](./packages/pg-core)** - Core interfaces with stream-first design
-- **[@graphile/pg-format](./packages/pg-format)** - Node.js implementation of PostgreSQL format() to safely create dynamic SQL queries
+- **[@graphile/pg-core](./packages/pg-core)** - Core interfaces with stream-first design and SQL formatting utilities
 - **[@graphile/pg-adapter-node-postgres](./packages/pg-adapter-node-postgres)** - Adapter for [node-postgres (pg)](https://github.com/brianc/node-postgres)
 - **[@graphile/pg-adapter-postgres-js](./packages/pg-adapter-postgres-js)** - Adapter for [postgres.js](https://github.com/porsager/postgres)
 - **[@graphile/pg-adapter-pglite](./packages/pg-adapter-pglite)** - Adapter for [PGLite](https://github.com/electric-sql/pglite)
@@ -21,9 +20,6 @@ yarn add @graphile/pg-core @graphile/pg-adapter-postgres-js postgres
 
 # For PGLite users (in-memory/WASM PostgreSQL)
 yarn add @graphile/pg-core @graphile/pg-adapter-pglite @electric-sql/pglite
-
-# For SQL formatting utilities
-yarn add @graphile/pg-format
 ```
 
 ## Usage

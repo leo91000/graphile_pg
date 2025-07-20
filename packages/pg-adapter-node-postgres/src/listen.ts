@@ -1,5 +1,5 @@
 import type { Pool, PoolClient } from "pg";
-import { ident } from "@graphile/pg-format";
+import { ident } from "@graphile/pg-core";
 
 export interface ListenError extends Error {
   /** The original error that caused the failure */

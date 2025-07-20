@@ -48,7 +48,6 @@
   "homepage": "https://github.com/leo91000/graphile_pg/tree/main/packages/pg-adapter-node-postgres#readme",
   "dependencies": {
     "@graphile/pg-core": "workspace:^",
-    "@graphile/pg-format": "workspace:^",
     "pg-cursor": "^2.15.3"
   },
   "peerDependencies": {

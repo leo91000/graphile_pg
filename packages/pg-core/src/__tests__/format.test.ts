@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { format, ident, literal, string, withArray, config } from "../index";
+import { format, ident, literal, string, withArray, config } from "../format";
 
 describe("pg-format", () => {
   describe("format()", () => {

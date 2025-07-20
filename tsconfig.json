@@ -32,7 +32,6 @@
   "include": [],
   "references": [
     { "path": "packages/pg-core" },
-    { "path": "packages/pg-format" },
     { "path": "packages/pg-adapter-node-postgres" },
     { "path": "packages/pg-adapter-postgres-js" },
     { "path": "packages/pg-adapter-pglite" }
