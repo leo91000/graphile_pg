@@ -19,8 +19,7 @@ describe("postgres.js error handling", () => {
   it("wraps PostgresError as PgAdapterError", async () => {
     try {
       // This should trigger a syntax error
-      const result = connection.query("SELECT * FROM nonexistent_table");
-      await result.toArray();
+      await connection.query("SELECT * FROM nonexistent_table");
       expect.fail("Should have thrown an error");
     } catch (error) {
       expect(error).toBeInstanceOf(PgAdapterError);
@@ -32,22 +31,21 @@ describe("postgres.js error handling", () => {
 
   it("wraps constraint violation errors", async () => {
     // Create a test table with a unique constraint
-    await connection.query("DROP TABLE IF EXISTS test_unique").toArray();
-    await connection
-      .query("CREATE TABLE test_unique (id INT PRIMARY KEY, name TEXT UNIQUE)")
-      .toArray();
+    await connection.execute("DROP TABLE IF EXISTS test_unique");
+    await connection.execute(
+      "CREATE TABLE test_unique (id INT PRIMARY KEY, name TEXT UNIQUE)",
+    );
 
     try {
       // Insert first row
-      await connection
-        .query("INSERT INTO test_unique (id, name) VALUES (1, 'test')")
-        .toArray();
+      await connection.execute(
+        "INSERT INTO test_unique (id, name) VALUES (1, 'test')",
+      );
 
       // Try to insert duplicate - should trigger unique constraint violation
-      const result = connection.query(
+      await connection.execute(
         "INSERT INTO test_unique (id, name) VALUES (2, 'test')",
       );
-      await result.toArray();
       expect.fail("Should have thrown an error");
     } catch (error) {
       expect(error).toBeInstanceOf(PgAdapterError);
@@ -55,7 +53,7 @@ describe("postgres.js error handling", () => {
       expect((error as PgAdapterError).severity).toBe("ERROR");
       expect((error as PgAdapterError).detail).toContain("already exists");
     } finally {
-      await connection.query("DROP TABLE IF EXISTS test_unique").toArray();
+      await connection.execute("DROP TABLE IF EXISTS test_unique");
     }
   });
 
@@ -63,8 +61,7 @@ describe("postgres.js error handling", () => {
     await connection.withPgClient(async (client) => {
       // Test with an invalid query syntax
       try {
-        const result = client.query("INVALID SQL SYNTAX");
-        await result.toArray();
+        await client.query("INVALID SQL SYNTAX");
         expect.fail("Should have thrown an error");
       } catch (error) {
         // This should be wrapped as PgAdapterError with syntax error code
@@ -77,12 +74,11 @@ describe("postgres.js error handling", () => {
   it("handles errors in transactions", async () => {
     try {
       await connection.withTransaction(async (client) => {
-        await client.query("CREATE TABLE test_tx (id INT PRIMARY KEY)").toArray();
+        await client.execute("CREATE TABLE test_tx (id INT PRIMARY KEY)");
 
         // This should fail due to duplicate key
-        await client.query("INSERT INTO test_tx VALUES (1)").toArray();
-        const result = client.query("INSERT INTO test_tx VALUES (1)");
-        await result.toArray();
+        await client.execute("INSERT INTO test_tx VALUES (1)");
+        await client.execute("INSERT INTO test_tx VALUES (1)");
         expect.fail("Should have thrown an error");
       });
     } catch (error) {
@@ -90,7 +86,7 @@ describe("postgres.js error handling", () => {
       expect((error as PgAdapterError).code).toBe("23505"); // unique_violation
     } finally {
       // Clean up in case the table was created
-      await connection.query("DROP TABLE IF EXISTS test_tx").toArray();
+      await connection.execute("DROP TABLE IF EXISTS test_tx");
     }
   });
 });

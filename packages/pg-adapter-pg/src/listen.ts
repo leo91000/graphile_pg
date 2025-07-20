@@ -28,7 +28,7 @@ export function createListenClient(config: ListenConfig): {
   let reconnectTimeout: NodeJS.Timeout | null = null;
   let attempts = 0;
   const MAX_DELAY = 60_000; // 60 seconds max delay
-  
+
   // Escape channel name once
   const escapedChannel = `"${channel.replace(/"/g, '""')}"`;
 
@@ -41,14 +41,14 @@ export function createListenClient(config: ListenConfig): {
     if (listenClient) {
       // Remove all listeners before releasing
       listenClient.removeAllListeners();
-      
+
       // Try to unlisten before releasing
       try {
         await listenClient.query(`UNLISTEN ${escapedChannel}`);
       } catch {
         // Ignore errors during unlisten
       }
-      
+
       listenClient.release();
       listenClient = null;
     }

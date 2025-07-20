@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "declarationDir": "./dist",
+    "outDir": "./dist",
+    "moduleResolution": "bundler",
+    "isolatedDeclarations": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "references": [{ "path": "../pg-core" }]
+}

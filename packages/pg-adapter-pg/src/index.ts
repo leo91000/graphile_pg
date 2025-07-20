@@ -14,7 +14,6 @@ import type {
 } from "@graphile/pg-core";
 import { PgAdapterError, createPgPool } from "@graphile/pg-core";
 import { createListenClient } from "./listen";
-import { createPoolQueryResult, createClientQueryResult } from "./query-result";
 
 export type { ListenError } from "./listen";
 
@@ -65,12 +64,32 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
   }
 
   return {
-    query<T extends MaybeRow = any>(
+    async execute(sql: string, params?: any[]): Promise<void> {
+      try {
+        await pool.query(sql, params);
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-    ): PgQueryResult<T> {
-      // For pool-level queries, we need to handle the connection internally
-      return createPoolQueryResult<T>(pool, sql, params, wrapError);
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = await pool.query(sql, params);
+        return {
+          command: result.command,
+          rowCount: result.rowCount ?? 0,
+          rows: result.rows as T[],
+          fields: result.fields?.map((field) => ({
+            name: field.name,
+            dataTypeID: field.dataTypeID,
+          })),
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
     },
 
     withPgClient,
@@ -79,13 +98,13 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
       callback: (client: PgClient) => Promise<T>,
     ): Promise<T> {
       return withPgClient(async (client) => {
-        await client.query("BEGIN");
+        await client.execute("BEGIN");
         try {
           const result = await callback(client);
-          await client.query("COMMIT");
+          await client.execute("COMMIT");
           return result;
         } catch (error) {
-          await client.query("ROLLBACK");
+          await client.execute("ROLLBACK");
           throw error;
         }
       });
@@ -121,11 +140,31 @@ function createNodePostgresClient(
 ): PgClient & { client: PoolClient } {
   return {
     client, // Expose for transaction handling
-    query<T extends MaybeRow = any>(
+    async execute(sql: string, params?: any[]): Promise<void> {
+      try {
+        await client.query(sql, params);
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+    async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-    ): PgQueryResult<T> {
-      return createClientQueryResult<T>(client, sql, params, wrapError);
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = await client.query(sql, params);
+        return {
+          command: result.command,
+          rowCount: result.rowCount ?? 0,
+          rows: result.rows as T[],
+          fields: result.fields?.map((field) => ({
+            name: field.name,
+            dataTypeID: field.dataTypeID,
+          })),
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
     },
   };
 }

@@ -15,8 +15,8 @@ describe("@graphile/pg-adapter-pg integration tests", () => {
     const setupPool = await createNodePostgresPool({
       connectionString: baseUrl,
     });
-    // Since PgQueryResult extends Promise, we can await it directly
-    await setupPool.query(`CREATE DATABASE "${dbName}"`);
+    // Execute the query and wait for completion
+    await setupPool.execute(`CREATE DATABASE "${dbName}"`);
     await setupPool.end();
 
     // Connect to the test database
@@ -33,7 +33,7 @@ describe("@graphile/pg-adapter-pg integration tests", () => {
       const cleanupPool = await createNodePostgresPool({
         connectionString: baseUrl,
       });
-      await cleanupPool.query(`DROP DATABASE IF EXISTS "${dbName}"`);
+      await cleanupPool.execute(`DROP DATABASE IF EXISTS "${dbName}"`);
       await cleanupPool.end();
     };
 

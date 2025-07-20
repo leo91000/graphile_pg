@@ -10,49 +10,56 @@ export interface Row {
 
 export type MaybeRow = Row | undefined;
 
-export interface PgQueryResult<T extends MaybeRow>
-  extends AsyncIterable<T>,
-  Promise<T[]> {
+export interface PgQueryResult<T extends MaybeRow = Row> {
   /**
-   * Process rows in batches
+   * The SQL command that was executed (e.g., "SELECT", "INSERT", "UPDATE")
    */
-  batches(size: number): AsyncIterable<T[]>;
+  command: string;
 
   /**
-   * Collect all rows into array (for small result sets)
+   * Number of rows affected or returned
    */
-  toArray(): Promise<T[]>;
+  rowCount: number;
 
   /**
-   * Just get the count (consumes the stream)
+   * The actual row data
    */
-  count(): Promise<number>;
+  rows: T[];
+
+  /**
+   * Field/column metadata (optional, not all adapters provide this)
+   */
+  fields?: Array<{
+    name: string;
+    dataTypeID?: number;
+  }>;
 }
 
 export interface PgClient {
   /**
-   * Stream-first query method
+   * Execute a query without returning results (for DDL, DML, transaction control)
    */
-  query<T extends MaybeRow = any>(
+  execute(sql: string, params?: any[]): Promise<void>;
+
+  /**
+   * Execute a query and return results with metadata
+   */
+  query<T extends MaybeRow = Row>(
     sql: string,
     params?: any[],
-  ): PgQueryResult<T>;
+  ): Promise<PgQueryResult<T>>;
 }
 
 export interface PgConnection extends PgClient {
   /**
    * Execute operations with a client from the pool
    */
-  withPgClient<T>(
-    callback: (client: PgClient) => Promise<T>,
-  ): Promise<T>;
+  withPgClient<T>(callback: (client: PgClient) => Promise<T>): Promise<T>;
 
   /**
    * Transaction support
    */
-  withTransaction<T>(
-    callback: (client: PgClient) => Promise<T>,
-  ): Promise<T>;
+  withTransaction<T>(callback: (client: PgClient) => Promise<T>): Promise<T>;
 
   /**
    * LISTEN support with provider-specific reconnection handling
@@ -146,11 +153,10 @@ export class PgAdapterError extends Error {
   }
 }
 
-
 /**
  * A PgConnection with all helper methods merged in
  */
-export interface PgPool extends PgConnection, PgHelpers { }
+export interface PgPool extends PgConnection, PgHelpers {}
 
 /**
  * Create a PgPool from a PgConnection adapter
@@ -161,8 +167,8 @@ export function createPgPool(adapter: PgConnection): PgPool {
 
   return {
     ...adapter,
-    ...helpers
+    ...helpers,
   };
 }
 
-export { PgClientHelper, createPgHelpers } from "./helpers";
+export { createPgHelpers } from "./helpers";

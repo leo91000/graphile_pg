@@ -20,28 +20,23 @@ export function createIntegrationTestSuite(
 
     describe("Basic Operations", () => {
       it("executes queries", async () => {
-        const result = sql.query<{ num: number }>("SELECT 1 as num");
-        const rows = await result.toArray();
-        expect(rows).toEqual([{ num: 1 }]);
+        const result = await sql.query<{ num: number }>("SELECT 1 as num");
+        expect(result.rows).toEqual([{ num: 1 }]);
       });
 
       it("handles parameters", async () => {
-        const result = sql.query<{ sum: number }>(
+        const result = await sql.query<{ sum: number }>(
           "SELECT $1::int + $2::int as sum",
           [5, 10],
         );
-        const rows = await result.toArray();
-        expect(rows[0].sum).toBe(15);
+        expect(result.rows[0].sum).toBe(15);
       });
 
-      it("streams results", async () => {
-        const result = sql.query<{ n: number }>(
+      it("handles multiple rows", async () => {
+        const result = await sql.query<{ n: number }>(
           "SELECT generate_series(1, 3) as n",
         );
-        const values: number[] = [];
-        for await (const row of result) {
-          values.push(row.n);
-        }
+        const values = result.rows.map((row) => row.n);
         expect(values).toEqual([1, 2, 3]);
       });
     });
@@ -54,31 +49,29 @@ export function createIntegrationTestSuite(
 
       it("commits data", async () => {
         await sql.withTransaction(async (tx) => {
-          await tx.query("INSERT INTO test VALUES (1, 'Alice')");
+          await tx.execute("INSERT INTO test VALUES (1, 'Alice')");
         });
 
-        const result = sql.query<{ name: string }>(
+        const result = await sql.query<{ name: string }>(
           "SELECT name FROM test WHERE id = 1",
         );
-        const rows = await result.toArray();
-        expect(rows[0].name).toBe("Alice");
+        expect(result.rows[0].name).toBe("Alice");
       });
 
       it("rolls back on error", async () => {
         try {
           await sql.withTransaction(async (tx) => {
-            await tx.query("INSERT INTO test VALUES (1, 'Bob')");
+            await tx.execute("INSERT INTO test VALUES (1, 'Bob')");
             throw new Error("Rollback");
           });
         } catch (e) {
           // Expected
         }
 
-        const result = sql.query("SELECT COUNT(*) as count FROM test");
-        const rows = await result.toArray();
-        expect(rows[0].count).toBe("0");
+        const result = await sql.query("SELECT COUNT(*) as count FROM test");
+        // PGLite returns numbers as numbers, while pg/postgres.js return them as strings
+        expect(String(result.rows[0].count)).toBe("0");
       });
-
     });
 
     describe("LISTEN/NOTIFY", () => {

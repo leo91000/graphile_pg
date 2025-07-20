@@ -70,15 +70,38 @@ function createPostgresJsConnectionInternal(sql: Sql): PgConnection {
   }
 
   return {
-    query<T extends MaybeRow = any>(
+    async execute(sqlText: string, params?: any[]): Promise<void> {
+      try {
+        if (params) {
+          await sql.unsafe(sqlText, params);
+        } else {
+          await sql.unsafe(sqlText);
+        }
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    async query<T extends MaybeRow = any>(
       sqlText: string,
       params?: any[],
-    ): PgQueryResult<T> {
-      const pendingQuery = params
-        ? sql.unsafe<T[]>(sqlText, params)
-        : sql.unsafe<T[]>(sqlText);
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = params
+          ? await sql.unsafe<T[]>(sqlText, params)
+          : await sql.unsafe<T[]>(sqlText);
 
-      return createPostgresJsQueryResult<T>(pendingQuery);
+        // postgres.js attaches metadata to the array
+        const pgResult = result as any;
+        return {
+          command: pgResult.command || "SELECT",
+          rowCount: pgResult.count ?? result.length,
+          rows: result,
+          // postgres.js doesn't provide field metadata in the same format
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
     },
 
     withPgClient,
@@ -136,139 +159,69 @@ function createPostgresJsConnectionInternal(sql: Sql): PgConnection {
 
 function createPostgresJsClient(reserved: ReservedSql): PgClient {
   return {
-    query<T extends MaybeRow = any>(
+    async execute(sql: string, params?: any[]): Promise<void> {
+      try {
+        if (params) {
+          await reserved.unsafe(sql, params);
+        } else {
+          await reserved.unsafe(sql);
+        }
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-    ): PgQueryResult<T> {
-      const pendingQuery = params
-        ? reserved.unsafe<T[]>(sql, params)
-        : reserved.unsafe<T[]>(sql);
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = params
+          ? await reserved.unsafe<T[]>(sql, params)
+          : await reserved.unsafe<T[]>(sql);
 
-      return createPostgresJsQueryResult<T>(pendingQuery);
+        const pgResult = result as any;
+        return {
+          command: pgResult.command || "SELECT",
+          rowCount: pgResult.count ?? result.length,
+          rows: result,
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
     },
   };
 }
 
 function createPostgresJsTransactionClient(txSql: Sql): PgClient {
   return {
-    query<T extends MaybeRow = any>(
+    async execute(sql: string, params?: any[]): Promise<void> {
+      try {
+        if (params) {
+          await txSql.unsafe(sql, params);
+        } else {
+          await txSql.unsafe(sql);
+        }
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
-    ): PgQueryResult<T> {
-      const pendingQuery = params
-        ? txSql.unsafe<T[]>(sql, params)
-        : txSql.unsafe<T[]>(sql);
-
-      return createPostgresJsQueryResult<T>(pendingQuery);
-    },
-  };
-}
-
-function createPostgresJsQueryResult<T extends MaybeRow>(
-  pendingQuery: postgres.PendingQuery<T[]>,
-): PgQueryResult<T> {
-  let cachedResult: postgres.RowList<T[]> | null = null;
-  let arrayPromise: Promise<T[]> | null = null;
-
-  const getArrayPromise = (): Promise<T[]> => {
-    if (!arrayPromise) {
-      // Create the promise lazily to avoid executing the query until needed
-      arrayPromise = pendingQuery
-        .then((result) => {
-          cachedResult = result;
-          return [...result];
-        })
-        .catch((error) => {
-          throw wrapError(error);
-        });
-    }
-    return arrayPromise;
-  };
-
-  const getResult = async (): Promise<postgres.RowList<T[]>> => {
-    if (cachedResult === null) {
-      // Await the PendingQuery to get the RowList
-      cachedResult = await pendingQuery;
-    }
-    return cachedResult;
-  };
-
-  return {
-    // Promise interface implementation
-    then<TResult1 = T[], TResult2 = never>(
-      onfulfilled?:
-        | ((value: T[]) => TResult1 | PromiseLike<TResult1>)
-        | undefined
-        | null,
-      onrejected?:
-        | ((reason: any) => TResult2 | PromiseLike<TResult2>)
-        | undefined
-        | null,
-    ): Promise<TResult1 | TResult2> {
-      return getArrayPromise().then(onfulfilled, onrejected);
-    },
-
-    catch<TResult = never>(
-      onrejected?:
-        | ((reason: any) => TResult | PromiseLike<TResult>)
-        | undefined
-        | null,
-    ): Promise<T[] | TResult> {
-      return getArrayPromise().catch(onrejected);
-    },
-
-    finally(onfinally?: (() => void) | undefined | null): Promise<T[]> {
-      return getArrayPromise().finally(onfinally);
-    },
-
-    [Symbol.toStringTag]: "PgQueryResult",
-
-    async *[Symbol.asyncIterator](): AsyncIterator<T> {
+    ): Promise<PgQueryResult<T>> {
       try {
-        // Use cursor for true streaming - returns AsyncIterable<T[]>
-        const cursor = pendingQuery.cursor();
-        for await (const rows of cursor) {
-          // cursor returns batches of rows
-          for (const row of rows) {
-            yield row;
-          }
-        }
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
+        const result = params
+          ? await txSql.unsafe<T[]>(sql, params)
+          : await txSql.unsafe<T[]>(sql);
 
-    async *batches(size: number): AsyncIterable<T[]> {
-      if (size <= 0) {
-        throw new Error("Batch size must be greater than 0");
-      }
-
-      try {
-        // Use cursor with specified batch size for efficient batching
-        const cursor = pendingQuery.cursor(size);
-        for await (const batch of cursor) {
-          yield batch;
-        }
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
-
-    async toArray(): Promise<T[]> {
-      try {
-        const result = await getResult();
-        // RowList extends array, so we can spread it
-        return [...result];
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
-
-    async count(): Promise<number> {
-      try {
-        const result = await getResult();
-        // RowList has length property
-        return result.length;
+        const pgResult = result as any;
+        return {
+          command: pgResult.command || "SELECT",
+          rowCount: pgResult.count ?? result.length,
+          rows: result,
+        };
       } catch (error) {
         throw wrapError(error);
       }

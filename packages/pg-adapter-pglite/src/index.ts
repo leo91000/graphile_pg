@@ -1,0 +1,219 @@
+/**
+ * Adapter for PGLite (embedded PostgreSQL)
+ * https://github.com/electric-sql/pglite
+ */
+
+import {
+  PGlite,
+  type PGliteOptions,
+  type Results,
+  type Transaction,
+} from "@electric-sql/pglite";
+import type {
+  PgConnection,
+  PgClient,
+  PgQueryResult,
+  MaybeRow,
+  PgPool as PgPoolAdapter,
+} from "@graphile/pg-core";
+import { PgAdapterError, createPgPool } from "@graphile/pg-core";
+
+/**
+ * Create a PostgreSQL connection using PGLite
+ */
+export async function createPGLitePool(
+  dataDir?: string,
+  options?: PGliteOptions,
+): Promise<PgPoolAdapter> {
+  // Dynamic import to support both CJS and ESM
+  const db = new PGlite(dataDir, options);
+  await db.waitReady;
+
+  const connection = createPGLiteConnection(db);
+  return createPgPool(connection);
+}
+
+function wrapError(error: unknown): PgAdapterError {
+  if (error && typeof error === "object" && "code" in error) {
+    const pgError = error as any;
+    return new PgAdapterError(
+      pgError.message || "Database error",
+      pgError.code,
+      error,
+      {
+        severity: pgError.severity,
+        detail: pgError.detail,
+        hint: pgError.hint,
+      },
+    );
+  }
+
+  // Handle non-PostgreSQL errors
+  const message = error instanceof Error ? error.message : String(error);
+  return new PgAdapterError(message, undefined, error);
+}
+
+function createPGLiteConnection(db: PGlite): PgConnection {
+  let closed = false;
+
+  async function withPgClient<T>(
+    callback: (client: PgClient) => Promise<T>,
+  ): Promise<T> {
+    if (closed) {
+      throw new Error("Connection is closed");
+    }
+
+    // PGLite doesn't have connection pooling, so we use the db directly
+    const client = createPGLiteClient(db, wrapError);
+    return await callback(client);
+  }
+
+  return {
+    async execute(sql: string, params?: any[]): Promise<void> {
+      try {
+        await db.query(sql, params);
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    async query<T extends MaybeRow = any>(
+      sql: string,
+      params?: any[],
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = await db.query<T>(sql, params);
+        return {
+          command: (result as any).command || "SELECT",
+          rowCount: result.rows.length,
+          rows: result.rows,
+          fields: result.fields?.map((field) => ({
+            name: field.name,
+            dataTypeID: field.dataTypeID,
+          })),
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    withPgClient,
+
+    async withTransaction<T>(
+      callback: (client: PgClient) => Promise<T>,
+    ): Promise<T> {
+      if (closed) {
+        throw new Error("Connection is closed");
+      }
+
+      return db.transaction(async (tx) => {
+        const client = createPGLiteTransactionClient(tx, wrapError);
+        return await callback(client);
+      });
+    },
+
+    async listen(
+      channel: string,
+      onnotify: (payload: string | null) => void,
+      onError?: (error: Error) => void,
+    ): Promise<{ unlisten: () => Promise<void> }> {
+      if (closed) {
+        throw new Error("Connection is closed");
+      }
+
+      // PGLite supports LISTEN/NOTIFY
+      try {
+        const unsubscribe = await db.listen(channel, (payload) => {
+          onnotify(payload);
+        });
+
+        return {
+          unlisten: async () => {
+            await unsubscribe();
+          },
+        };
+      } catch (error) {
+        const wrappedError = wrapError(error);
+        if (onError) {
+          onError(wrappedError);
+        }
+        throw wrappedError;
+      }
+    },
+
+    async end(): Promise<void> {
+      closed = true;
+      await db.close();
+    },
+  };
+}
+
+function createPGLiteClient(
+  db: PGlite,
+  wrapError: (error: unknown) => PgAdapterError,
+): PgClient {
+  return {
+    async execute(sql: string, params?: any[]): Promise<void> {
+      try {
+        await db.query(sql, params);
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    async query<T extends MaybeRow = any>(
+      sql: string,
+      params?: any[],
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = await db.query<T>(sql, params);
+        return {
+          command: (result as any).command || "SELECT",
+          rowCount: result.rows.length,
+          rows: result.rows,
+          fields: result.fields?.map((field) => ({
+            name: field.name,
+            dataTypeID: field.dataTypeID,
+          })),
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+  };
+}
+
+function createPGLiteTransactionClient(
+  tx: Transaction,
+  wrapError: (error: unknown) => PgAdapterError,
+): PgClient {
+  return {
+    async execute(sql: string, params?: any[]): Promise<void> {
+      try {
+        await tx.query(sql, params);
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    async query<T extends MaybeRow = any>(
+      sql: string,
+      params?: any[],
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = await tx.query<T>(sql, params);
+        return {
+          command: (result as any).command || "SELECT",
+          rowCount: result.rows.length,
+          rows: result.rows,
+          fields: result.fields?.map((field) => ({
+            name: field.name,
+            dataTypeID: field.dataTypeID,
+          })),
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+  };
+}

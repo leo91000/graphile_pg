@@ -70,6 +70,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@electric-sql/pglite@npm:^0.2.0":
+  version: 0.2.17
+  resolution: "@electric-sql/pglite@npm:0.2.17"
+  checksum: 10c0/4358eccb2a3de5148b8995c7dbf3cad2d80a2a193885838ec19e0381ca204c0e37f721d006ad23fcad0b694ec6089a6786b82f2ad87f18344c82e059ff37017f
+  languageName: node
+  linkType: hard
+
 "@emnapi/core@npm:^1.4.3":
   version: 1.4.3
   resolution: "@emnapi/core@npm:1.4.3"
@@ -373,6 +380,21 @@ __metadata:
     typescript: "npm:^5.8.3"
   peerDependencies:
     pg: ^8.7.1
+  languageName: unknown
+  linkType: soft
+
+"@graphile/pg-adapter-pglite@workspace:packages/pg-adapter-pglite":
+  version: 0.0.0-use.local
+  resolution: "@graphile/pg-adapter-pglite@workspace:packages/pg-adapter-pglite"
+  dependencies:
+    "@electric-sql/pglite": "npm:^0.2.0"
+    "@graphile/pg-core": "workspace:^"
+    "@types/node": "npm:^22.16.5"
+    tsdown: "npm:^0.12.9"
+    tslib: "npm:^2.8.1"
+    typescript: "npm:^5.8.3"
+  peerDependencies:
+    "@electric-sql/pglite": ^0.2.0
   languageName: unknown
   linkType: soft
 
