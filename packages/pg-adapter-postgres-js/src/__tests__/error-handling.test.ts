@@ -6,10 +6,10 @@ const DATABASE_URL =
   process.env.DATABASE_URL || "postgres://localhost:5432/test";
 
 describe("postgres.js error handling", () => {
-  let connection: Awaited<ReturnType<typeof createPostgresJsPool>>;
+  let connection: ReturnType<typeof createPostgresJsPool>;
 
   beforeAll(async () => {
-    connection = await createPostgresJsPool(DATABASE_URL, {
+    connection = createPostgresJsPool(DATABASE_URL, {
       onnotice: () => {
         // Suppress PostgreSQL notices in tests to avoid cluttering output
       },

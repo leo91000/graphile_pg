@@ -18,12 +18,12 @@ yarn add @graphile/pg-core @graphile/pg-adapter-pglite @electric-sql/pglite
 import { createPGLitePool } from "@graphile/pg-adapter-pglite";
 
 // Option 1: Create a new in-memory database
-const pool = await createPGLitePool();
+const pool = createPGLitePool();
 
 // Option 2: Pass a pre-configured PGLite instance
 import { PGlite } from "@electric-sql/pglite";
 const db = new PGlite();
-const pool2 = await createPGLitePool(db);
+const pool2 = createPGLitePool(db);
 ```
 
 ### Persistent Database
@@ -32,12 +32,12 @@ const pool2 = await createPGLitePool(db);
 import { createPGLitePool } from "@graphile/pg-adapter-pglite";
 
 // Option 1: Create a persistent database (Node.js only)
-const pool = await createPGLitePool("./my-database");
+const pool = createPGLitePool("./my-database");
 
 // Option 2: Pass a pre-configured PGLite instance
 import { PGlite } from "@electric-sql/pglite";
 const db = new PGlite("./my-database");
-const pool2 = await createPGLitePool(db);
+const pool2 = createPGLitePool(db);
 ```
 
 ### Browser Usage
@@ -46,7 +46,7 @@ const pool2 = await createPGLitePool(db);
 import { createPGLitePool } from "@graphile/pg-adapter-pglite";
 
 // In the browser - uses IndexedDB for persistence
-const pool = await createPGLitePool("idb://my-database");
+const pool = createPGLitePool("idb://my-database");
 ```
 
 ### Basic Operations
@@ -93,7 +93,7 @@ await pool.withTransaction(async (tx) => {
 PGLite supports many PostgreSQL extensions:
 
 ```typescript
-const pool = await createPGLitePool(undefined, {
+const pool = createPGLitePool(undefined, {
   extensions: {
     vector: "https://unpkg.com/@electric-sql/pglite/dist/vector.js",
   },
@@ -121,7 +121,7 @@ await pool.execute("CREATE EXTENSION vector");
 ## Configuration Options
 
 ```typescript
-const pool = await createPGLitePool("./data", {
+const pool = createPGLitePool("./data", {
   debug: true, // Enable debug logging
   extensions: {}, // Extensions to load
   relaxedDurability: true, // Faster writes, less durability

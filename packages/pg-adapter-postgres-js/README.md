@@ -18,7 +18,7 @@ yarn add @graphile/pg-core @graphile/pg-adapter-postgres-js postgres
 import { createPostgresJsPool } from "@graphile/pg-adapter-postgres-js";
 
 // Option 1: Pass connection string and options (creates a new sql instance)
-const pool = await createPostgresJsPool(
+const pool = createPostgresJsPool(
   "postgresql://user:pass@localhost:5432/mydb",
   {
     max: 10,
@@ -29,7 +29,7 @@ const pool = await createPostgresJsPool(
 // Option 2: Pass a pre-configured postgres.js sql instance
 import postgres from "postgres";
 const sql = postgres({ max: 50 });
-const pool2 = await createPostgresJsPool(sql);
+const pool2 = createPostgresJsPool(sql);
 ```
 
 ### Connection with Options
@@ -37,7 +37,7 @@ const pool2 = await createPostgresJsPool(sql);
 ```typescript
 import { createPostgresJsPool } from "@graphile/pg-adapter-postgres-js";
 
-const pool = await createPostgresJsPool(
+const pool = createPostgresJsPool(
   "postgresql://user:pass@localhost:5432/mydb",
   {
     host: "localhost",
@@ -101,7 +101,7 @@ await listener.unlisten();
 All [postgres.js configuration options](https://github.com/porsager/postgres#all-postgres-options) are supported:
 
 ```typescript
-const pool = await createPostgresJsPool(
+const pool = createPostgresJsPool(
   "postgresql://user:pass@localhost:5432/mydb",
   {
     host: "localhost",

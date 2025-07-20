@@ -22,10 +22,10 @@ import { PgAdapterError, createPgPool } from "@graphile/pg-core";
  * @param dataDirOrDb - Either a data directory path (or undefined for in-memory) or a pre-configured PGLite instance
  * @param options - PGLite options (only used when creating a new instance)
  */
-export async function createPGLitePool(
+export function createPGLitePool(
   dataDirOrDb?: string | PGlite,
   options?: PGliteOptions,
-): Promise<PgPoolAdapter> {
+): PgPoolAdapter {
   let db: PGlite;
 
   if (dataDirOrDb instanceof PGlite) {
@@ -34,7 +34,6 @@ export async function createPGLitePool(
   } else {
     // Data directory path provided (or undefined for in-memory)
     db = new PGlite(dataDirOrDb, options);
-    await db.waitReady;
   }
 
   const connection = createPGLiteConnection(db);

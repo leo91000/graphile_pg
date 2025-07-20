@@ -44,9 +44,9 @@ function generatePreparedStatementName(sql: string, params?: any[]): string {
  * Create a PostgreSQL connection using node-postgres (pg)
  * @param poolOrConfig - Either a pre-configured Pool instance or PoolConfig options
  */
-export async function createNodePostgresPool(
+export function createNodePostgresPool(
   poolOrConfig?: Pool | PoolConfig,
-): Promise<PgPoolAdapter> {
+): PgPoolAdapter {
   let pool: Pool;
   let maxPoolSize: number;
 

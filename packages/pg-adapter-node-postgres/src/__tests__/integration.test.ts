@@ -13,7 +13,7 @@ describe("@graphile/pg-adapter-node-postgres integration tests", () => {
     const testUrl = baseUrl.replace(/\/[^/]*$/, `/${dbName}`);
 
     // Create the test database
-    const setupPool = await createNodePostgresPool({
+    const setupPool = createNodePostgresPool({
       connectionString: baseUrl,
     });
     // Execute the query and wait for completion
@@ -21,7 +21,7 @@ describe("@graphile/pg-adapter-node-postgres integration tests", () => {
     await setupPool.end();
 
     // Connect to the test database
-    const pool = await createNodePostgresPool({
+    const pool = createNodePostgresPool({
       connectionString: testUrl,
       max: 5,
     });
@@ -31,7 +31,7 @@ describe("@graphile/pg-adapter-node-postgres integration tests", () => {
     pool.end = async () => {
       await originalEnd();
       // Drop the test database
-      const cleanupPool = await createNodePostgresPool({
+      const cleanupPool = createNodePostgresPool({
         connectionString: baseUrl,
       });
       await cleanupPool.execute(`DROP DATABASE IF EXISTS ${ident(dbName)}`);

@@ -13,7 +13,7 @@ describe("@graphile/pg-adapter-postgres-js integration tests", () => {
     const testUrl = baseUrl.replace(/\/[^/]*$/, `/${dbName}`);
 
     // Create the test database
-    const setupPool = await createPostgresJsPool(baseUrl, {
+    const setupPool = createPostgresJsPool(baseUrl, {
       onnotice: () => {
         // Suppress PostgreSQL notices in tests
       },
@@ -23,7 +23,7 @@ describe("@graphile/pg-adapter-postgres-js integration tests", () => {
     await setupPool.end();
 
     // Connect to the test database
-    const pool = await createPostgresJsPool(testUrl, {
+    const pool = createPostgresJsPool(testUrl, {
       onnotice: () => {
         // Suppress PostgreSQL notices in tests
       },
@@ -34,7 +34,7 @@ describe("@graphile/pg-adapter-postgres-js integration tests", () => {
     pool.end = async () => {
       await originalEnd();
       // Drop the test database
-      const cleanupPool = await createPostgresJsPool(baseUrl, {
+      const cleanupPool = createPostgresJsPool(baseUrl, {
         onnotice: () => {
           // Suppress PostgreSQL notices in tests
         },

@@ -16,19 +16,19 @@ import postgres from "postgres";
 /**
  * Create a PostgreSQL connection using postgres.js
  */
-export async function createPostgresJsPool<
+export function createPostgresJsPool<
   T extends Record<string, postgres.PostgresType> = {},
 >(
   connectionString: string,
   options?: postgres.Options<T> | undefined,
-): Promise<PgPoolAdapter>;
-export async function createPostgresJsPool(sql: Sql): Promise<PgPoolAdapter>;
-export async function createPostgresJsPool<
+): PgPoolAdapter;
+export function createPostgresJsPool(sql: Sql): PgPoolAdapter;
+export function createPostgresJsPool<
   T extends Record<string, postgres.PostgresType> = {},
 >(
   connectionStringOrSql: string | Sql,
   options?: postgres.Options<T> | undefined,
-): Promise<PgPoolAdapter> {
+): PgPoolAdapter {
   let sql: Sql;
   let maxPoolSize: number;
 
