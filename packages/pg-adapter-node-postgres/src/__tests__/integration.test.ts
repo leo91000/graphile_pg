@@ -6,7 +6,7 @@ import { createNodePostgresPool } from "../index";
 
 const baseUrl = process.env.DATABASE_URL || "postgres://localhost:5432/test";
 
-describe("@graphile/pg-adapter-pg integration tests", () => {
+describe("@graphile/pg-adapter-node-postgres integration tests", () => {
   createIntegrationTestSuite(async () => {
     // Generate unique database name
     const dbName = `test_${crypto.randomUUID().replace(/-/g, "_")}`;

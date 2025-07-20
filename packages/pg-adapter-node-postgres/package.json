@@ -1,5 +1,5 @@
 {
-  "name": "@graphile/pg-adapter-pg",
+  "name": "@graphile/pg-adapter-node-postgres",
   "version": "0.1.0",
   "description": "PostgreSQL adapter for node-postgres (pg) module",
   "type": "module",
@@ -27,7 +27,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/leo91000/graphile_pg.git",
-    "directory": "packages/pg-adapter-pg"
+    "directory": "packages/pg-adapter-node-postgres"
   },
   "keywords": [
     "graphile",
@@ -45,7 +45,7 @@
   "bugs": {
     "url": "https://github.com/leo91000/graphile_pg/issues"
   },
-  "homepage": "https://github.com/leo91000/graphile_pg/tree/main/packages/pg-adapter-pg#readme",
+  "homepage": "https://github.com/leo91000/graphile_pg/tree/main/packages/pg-adapter-node-postgres#readme",
   "dependencies": {
     "@graphile/pg-core": "workspace:^",
     "@graphile/pg-format": "workspace:^",

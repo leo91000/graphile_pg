@@ -366,9 +366,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@graphile/pg-adapter-pg@workspace:packages/pg-adapter-pg":
+"@graphile/pg-adapter-node-postgres@workspace:packages/pg-adapter-node-postgres":
   version: 0.0.0-use.local
-  resolution: "@graphile/pg-adapter-pg@workspace:packages/pg-adapter-pg"
+  resolution: "@graphile/pg-adapter-node-postgres@workspace:packages/pg-adapter-node-postgres"
   dependencies:
     "@graphile/pg-core": "workspace:^"
     "@graphile/pg-format": "workspace:^"
