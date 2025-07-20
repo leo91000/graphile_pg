@@ -127,6 +127,10 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
       });
     },
 
+    getPoolSize(): number {
+      return pool.totalCount;
+    },
+
     async end(): Promise<void> {
       closed = true;
       await pool.end();

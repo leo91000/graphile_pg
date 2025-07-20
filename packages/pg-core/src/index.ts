@@ -71,6 +71,11 @@ export interface PgConnection extends PgClient {
   ): Promise<{ unlisten: () => Promise<void> }>;
 
   /**
+   * Get the total number of connections in the pool
+   */
+  getPoolSize(): number;
+
+  /**
    * Properly close the connection/pool
    */
   end(): Promise<void>;

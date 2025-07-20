@@ -23,7 +23,10 @@ export async function createPostgresJsPool<
   options?: postgres.Options<T> | undefined,
 ): Promise<PgPoolAdapter> {
   const sql = postgres(connectionString, options);
-  const connection = createPostgresJsConnectionInternal(sql);
+  const connection = createPostgresJsConnectionInternal(
+    sql,
+    options?.max ?? 10,
+  );
   return createPgPool(connection);
 }
 
@@ -54,7 +57,10 @@ function wrapError(error: unknown): PgAdapterError {
   return new PgAdapterError(message, undefined, error);
 }
 
-function createPostgresJsConnectionInternal(sql: Sql): PgConnection {
+function createPostgresJsConnectionInternal(
+  sql: Sql,
+  maxPoolSize: number,
+): PgConnection {
   let closed = false;
 
   async function withPgClient<T>(
@@ -148,6 +154,10 @@ function createPostgresJsConnectionInternal(sql: Sql): PgConnection {
       } catch (error) {
         throw wrapError(error);
       }
+    },
+
+    getPoolSize(): number {
+      return maxPoolSize;
     },
 
     async end(): Promise<void> {

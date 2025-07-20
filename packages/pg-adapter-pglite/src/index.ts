@@ -141,6 +141,10 @@ function createPGLiteConnection(db: PGlite): PgConnection {
       }
     },
 
+    getPoolSize(): number {
+      return 1;
+    },
+
     async end(): Promise<void> {
       closed = true;
       await db.close();
