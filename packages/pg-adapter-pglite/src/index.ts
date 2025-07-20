@@ -70,9 +70,10 @@ function createPGLiteConnection(db: PGlite): PgConnection {
       throw new Error("Connection is closed");
     }
 
-    // PGLite doesn't have connection pooling, so we use the db directly
-    const client = createPGLiteClient(db, wrapError);
-    return await callback(client);
+    return await db.runExclusive(async () => {
+      const client = createPGLiteClient(db, wrapError);
+      return await callback(client);
+    });
   }
 
   return {
