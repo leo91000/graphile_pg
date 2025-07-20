@@ -18,6 +18,29 @@ import { createListenClient } from "./listen";
 export type { ListenError } from "./listen";
 
 /**
+ * Infer PostgreSQL type ID for parameter (similar to postgres.js)
+ */
+function inferType(x: any): number {
+  if (x instanceof Date) return 1184; // timestamp
+  if (x instanceof Uint8Array) return 17; // bytea
+  if (x === true || x === false) return 16; // boolean
+  if (typeof x === "bigint") return 20; // bigint
+  if (Array.isArray(x)) return inferType(x[0]); // array of first element type
+  return 0; // unknown/text
+}
+
+/**
+ * Generate prepared statement name (similar to postgres.js signature)
+ */
+function generatePreparedStatementName(sql: string, params?: any[]): string {
+  if (!params || params.length === 0) {
+    return sql;
+  }
+  const types = params.map(inferType).join(",");
+  return `${types}:${sql}`;
+}
+
+/**
  * Create a PostgreSQL connection using node-postgres (pg)
  */
 export async function createNodePostgresPool(
@@ -64,9 +87,14 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
   }
 
   return {
-    async execute(sql: string, params?: any[]): Promise<void> {
+    async execute(sql: string, params?: any[], options?: { prepare?: boolean }): Promise<void> {
       try {
-        await pool.query(sql, params);
+        if (options?.prepare) {
+          const name = generatePreparedStatementName(sql, params);
+          await pool.query({ text: sql, values: params, name });
+        } else {
+          await pool.query(sql, params);
+        }
       } catch (error) {
         throw wrapError(error);
       }
@@ -75,9 +103,16 @@ function createNodePostgresConnection(pool: Pool): PgConnection {
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
+      options?: { prepare?: boolean }
     ): Promise<PgQueryResult<T>> {
       try {
-        const result = await pool.query(sql, params);
+        const result = options?.prepare
+          ? await pool.query({ 
+              text: sql, 
+              values: params, 
+              name: generatePreparedStatementName(sql, params) 
+            })
+          : await pool.query(sql, params);
         return {
           command: result.command,
           rowCount: result.rowCount ?? 0,
@@ -144,9 +179,14 @@ function createNodePostgresClient(
 ): PgClient & { client: PoolClient } {
   return {
     client, // Expose for transaction handling
-    async execute(sql: string, params?: any[]): Promise<void> {
+    async execute(sql: string, params?: any[], options?: { prepare?: boolean }): Promise<void> {
       try {
-        await client.query(sql, params);
+        if (options?.prepare) {
+          const name = generatePreparedStatementName(sql, params);
+          await client.query({ text: sql, values: params, name });
+        } else {
+          await client.query(sql, params);
+        }
       } catch (error) {
         throw wrapError(error);
       }
@@ -154,9 +194,16 @@ function createNodePostgresClient(
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
+      options?: { prepare?: boolean }
     ): Promise<PgQueryResult<T>> {
       try {
-        const result = await client.query(sql, params);
+        const result = options?.prepare
+          ? await client.query({ 
+              text: sql, 
+              values: params, 
+              name: generatePreparedStatementName(sql, params) 
+            })
+          : await client.query(sql, params);
         return {
           command: result.command,
           rowCount: result.rowCount ?? 0,

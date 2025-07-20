@@ -39,7 +39,7 @@ export interface PgClient {
   /**
    * Execute a query without returning results (for DDL, DML, transaction control)
    */
-  execute(sql: string, params?: any[]): Promise<void>;
+  execute(sql: string, params?: any[], options?: { prepare?: boolean }): Promise<void>;
 
   /**
    * Execute a query and return results with metadata
@@ -47,6 +47,7 @@ export interface PgClient {
   query<T extends MaybeRow = Row>(
     sql: string,
     params?: any[],
+    options?: { prepare?: boolean }
   ): Promise<PgQueryResult<T>>;
 }
 

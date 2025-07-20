@@ -76,12 +76,12 @@ function createPostgresJsConnectionInternal(
   }
 
   return {
-    async execute(sqlText: string, params?: any[]): Promise<void> {
+    async execute(sqlText: string, params?: any[], options?: { prepare?: boolean }): Promise<void> {
       try {
         if (params) {
-          await sql.unsafe(sqlText, params);
+          await sql.unsafe(sqlText, params, { prepare: options?.prepare ?? false });
         } else {
-          await sql.unsafe(sqlText);
+          await sql.unsafe(sqlText, [], { prepare: options?.prepare ?? false });
         }
       } catch (error) {
         throw wrapError(error);
@@ -91,11 +91,12 @@ function createPostgresJsConnectionInternal(
     async query<T extends MaybeRow = any>(
       sqlText: string,
       params?: any[],
+      options?: { prepare?: boolean }
     ): Promise<PgQueryResult<T>> {
       try {
         const result = params
-          ? await sql.unsafe<T[]>(sqlText, params)
-          : await sql.unsafe<T[]>(sqlText);
+          ? await sql.unsafe<T[]>(sqlText, params, { prepare: options?.prepare ?? false })
+          : await sql.unsafe<T[]>(sqlText, [], { prepare: options?.prepare ?? false });
 
         // postgres.js attaches metadata to the array
         const pgResult = result as any;
@@ -169,12 +170,12 @@ function createPostgresJsConnectionInternal(
 
 function createPostgresJsClient(reserved: ReservedSql): PgClient {
   return {
-    async execute(sql: string, params?: any[]): Promise<void> {
+    async execute(sql: string, params?: any[], options?: { prepare?: boolean }): Promise<void> {
       try {
         if (params) {
-          await reserved.unsafe(sql, params);
+          await reserved.unsafe(sql, params, { prepare: options?.prepare ?? false });
         } else {
-          await reserved.unsafe(sql);
+          await reserved.unsafe(sql, [], { prepare: options?.prepare ?? false });
         }
       } catch (error) {
         throw wrapError(error);
@@ -184,11 +185,12 @@ function createPostgresJsClient(reserved: ReservedSql): PgClient {
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
+      options?: { prepare?: boolean }
     ): Promise<PgQueryResult<T>> {
       try {
         const result = params
-          ? await reserved.unsafe<T[]>(sql, params)
-          : await reserved.unsafe<T[]>(sql);
+          ? await reserved.unsafe<T[]>(sql, params, { prepare: options?.prepare ?? false })
+          : await reserved.unsafe<T[]>(sql, [], { prepare: options?.prepare ?? false });
 
         const pgResult = result as any;
         return {
@@ -205,12 +207,12 @@ function createPostgresJsClient(reserved: ReservedSql): PgClient {
 
 function createPostgresJsTransactionClient(txSql: Sql): PgClient {
   return {
-    async execute(sql: string, params?: any[]): Promise<void> {
+    async execute(sql: string, params?: any[], options?: { prepare?: boolean }): Promise<void> {
       try {
         if (params) {
-          await txSql.unsafe(sql, params);
+          await txSql.unsafe(sql, params, { prepare: options?.prepare ?? false });
         } else {
-          await txSql.unsafe(sql);
+          await txSql.unsafe(sql, [], { prepare: options?.prepare ?? false });
         }
       } catch (error) {
         throw wrapError(error);
@@ -220,11 +222,12 @@ function createPostgresJsTransactionClient(txSql: Sql): PgClient {
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
+      options?: { prepare?: boolean }
     ): Promise<PgQueryResult<T>> {
       try {
         const result = params
-          ? await txSql.unsafe<T[]>(sql, params)
-          : await txSql.unsafe<T[]>(sql);
+          ? await txSql.unsafe<T[]>(sql, params, { prepare: options?.prepare ?? false })
+          : await txSql.unsafe<T[]>(sql, [], { prepare: options?.prepare ?? false });
 
         const pgResult = result as any;
         return {
