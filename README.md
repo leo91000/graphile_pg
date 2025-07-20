@@ -4,7 +4,7 @@ PostgreSQL adapter system for Graphile tools. This monorepo provides a common in
 
 ## Packages
 
-- **[@graphile/pg-core](./packages/pg-core)** - Core interfaces with stream-first design and SQL formatting utilities
+- **[@graphile/pg-core](./packages/pg-core)** - Core interfaces and SQL formatting utilities
 - **[@graphile/pg-adapter-node-postgres](./packages/pg-adapter-node-postgres)** - Adapter for [node-postgres (pg)](https://github.com/brianc/node-postgres)
 - **[@graphile/pg-adapter-postgres-js](./packages/pg-adapter-postgres-js)** - Adapter for [postgres.js](https://github.com/porsager/postgres)
 - **[@graphile/pg-adapter-pglite](./packages/pg-adapter-pglite)** - Adapter for [PGLite](https://github.com/electric-sql/pglite)
@@ -27,28 +27,21 @@ yarn add @graphile/pg-core @graphile/pg-adapter-pglite @electric-sql/pglite
 ### Using node-postgres adapter
 
 ```typescript
-import { createNodePostgresConnection } from "@graphile/pg-adapter-node-postgres";
+import { createNodePostgresPool } from "@graphile/pg-adapter-node-postgres";
 
-// Create a connection
-const connection = await createNodePostgresConnection(
-  "postgresql://user:pass@localhost:5432/mydb",
-);
+// Create a pool
+const pool = createNodePostgresPool({
+  connectionString: "postgresql://user:pass@localhost:5432/mydb",
+  max: 10,
+});
 
-// Execute queries with streaming results
-const result = connection.query("SELECT * FROM users WHERE active = $1", [
-  true,
-]);
-
-// Process rows one by one
-for await (const row of result) {
-  console.log(row);
-}
-
-// Or collect all rows into array
-const allRows = await result.toArray();
+// Execute queries
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+console.log(result.rows); // Array of row objects
+console.log(result.rowCount); // Number of rows returned
 
 // Transaction support
-await connection.transaction(async (tx) => {
+await pool.withTransaction(async (tx) => {
   await tx.execute("UPDATE users SET active = false WHERE id = $1", [123]);
   await tx.execute("INSERT INTO audit_log (action) VALUES ($1)", [
     "user_deactivated",
@@ -56,55 +49,52 @@ await connection.transaction(async (tx) => {
 });
 
 // LISTEN/NOTIFY support
-const listener = await connection.listen("my_channel", (payload) => {
+const listener = await pool.listen("my_channel", (payload) => {
   console.log("Received:", payload);
 });
+
+// Send notification
+await pool.notify("my_channel", "Hello World");
 
 // Stop listening
 await listener.unlisten();
 
 // Cleanup
-await connection.close();
+await pool.end();
 ```
 
 ### Using postgres.js adapter
 
 ```typescript
-import { createPostgresJsConnection } from "@graphile/pg-adapter-postgres-js";
+import { createPostgresJsPool } from "@graphile/pg-adapter-postgres-js";
 
-// Create a connection
-const connection = await createPostgresJsConnection(
+// Create a pool
+const pool = createPostgresJsPool(
   "postgresql://user:pass@localhost:5432/mydb",
+  { max: 10 }
 );
 
 // Same interface as node-postgres adapter
-const result = connection.query("SELECT * FROM large_table");
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+console.log(result.rows); // Array of row objects
+console.log(result.rowCount); // Number of rows returned
 
-// Process in batches for memory efficiency
-for await (const batch of result.batches(100)) {
-  console.log(`Processing ${batch.length} rows`);
-  // Process batch...
-}
-
-// Get just the count
-const count = await connection.query("SELECT * FROM users").count();
-console.log(`Total users: ${count}`);
+// Execute without returning results
+await pool.execute("UPDATE users SET last_seen = NOW() WHERE id = $1", [123]);
 ```
 
-## Stream-First Interface
+## Common Interface
 
-This adapter system uses a stream-first design for memory efficiency:
+All adapters implement a common interface:
 
-- `PgConnection.query()` - Returns a `PgQueryResult` with async iteration
-- `PgQueryResult[Symbol.asyncIterator]()` - Process rows one by one
-- `PgQueryResult.batches(size)` - Process rows in batches
-- `PgQueryResult.toArray()` - Collect all rows (for small result sets)
-- `PgQueryResult.count()` - Get row count (consumes the stream)
-- `PgConnection.execute()` - Execute without returning results
-- `PgConnection.notify()` - Send NOTIFY messages
-- `PgConnection.transaction()` - Transaction support
-- `PgConnection.listen()` - LISTEN/NOTIFY support
-- `PgConnection.close()` - Close the connection
+- `query(sql, params?)` - Execute query and return results with metadata
+- `execute(sql, params?)` - Execute query without returning results
+- `withTransaction(callback)` - Run operations in a transaction
+- `withPgClient(callback)` - Get a client from the pool for multiple operations
+- `listen(channel, callback)` - Subscribe to PostgreSQL notifications
+- `notify(channel, payload?)` - Send PostgreSQL notifications
+- `getPoolSize()` - Get the configured pool size
+- `end()` - Close the connection pool
 
 ## Development
 
@@ -123,7 +113,7 @@ yarn test
 
 ## Contributing
 
-Contributions are welcome! The postgres.js adapter is not yet implemented and would be a great first contribution.
+Contributions are welcome!
 
 ## License
 

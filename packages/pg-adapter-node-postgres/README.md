@@ -2,7 +2,7 @@
 
 PostgreSQL adapter for [node-postgres (pg)](https://github.com/brianc/node-postgres) module.
 
-This adapter implements the `@graphile/pg-core` interfaces using the popular node-postgres library, providing stream-first access to PostgreSQL databases.
+This adapter implements the `@graphile/pg-core` interfaces using the popular node-postgres library.
 
 ## Installation
 

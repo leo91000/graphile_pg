@@ -2,7 +2,7 @@
 
 Core PostgreSQL adapter interfaces and utilities for Graphile tools.
 
-This package provides the foundational interfaces and types that all PostgreSQL adapters implement, enabling a consistent stream-first API across different PostgreSQL client libraries. It also includes SQL formatting utilities for safely building dynamic SQL queries.
+This package provides the foundational interfaces and types that all PostgreSQL adapters implement, enabling a consistent API across different PostgreSQL client libraries. It also includes SQL formatting utilities for safely building dynamic SQL queries.
 
 ## Installation
 
@@ -13,7 +13,7 @@ yarn add @graphile/pg-core
 ## Key Interfaces
 
 - `PgConnection` - Main database connection interface
-- `PgQueryResult` - Stream-first query result interface
+- `PgQueryResult` - Query result interface with metadata
 - `PgTransaction` - Transaction interface
 - `PgListener` - LISTEN/NOTIFY interface
 - `PgAdapterError` - Base error class for adapter-specific errors

@@ -2,7 +2,7 @@
 
 PostgreSQL adapter for [postgres.js](https://github.com/porsager/postgres) module.
 
-This adapter implements the `@graphile/pg-core` interfaces using the postgres.js library, providing stream-first access to PostgreSQL databases with excellent performance characteristics.
+This adapter implements the `@graphile/pg-core` interfaces using the postgres.js library with excellent performance characteristics.
 
 ## Installation
 
