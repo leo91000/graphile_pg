@@ -49,8 +49,7 @@
   "dependencies": {
     "@graphile/pg-core": "workspace:^",
     "@graphile/pg-format": "workspace:^",
-    "pg-cursor": "^2.15.3",
-    "tslib": "^2.8.1"
+    "pg-cursor": "^2.15.3"
   },
   "peerDependencies": {
     "pg": "^8.7.1"

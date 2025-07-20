@@ -47,8 +47,7 @@
   },
   "homepage": "https://github.com/leo91000/graphile_pg/tree/main/packages/pg-adapter-pglite#readme",
   "dependencies": {
-    "@graphile/pg-core": "workspace:^",
-    "tslib": "^2.8.1"
+    "@graphile/pg-core": "workspace:^"
   },
   "peerDependencies": {
     "@electric-sql/pglite": "^0.2.0"
