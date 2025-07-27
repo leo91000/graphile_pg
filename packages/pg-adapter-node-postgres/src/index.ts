@@ -1,0 +1,237 @@
+/**
+ * Adapter for the `pg` module (node-postgres).
+ * https://github.com/brianc/node-postgres
+ */
+
+import type { Pool, PoolClient, PoolConfig } from "pg";
+import pg from "pg";
+import type {
+  PgConnection,
+  PgClient,
+  PgQueryResult,
+  MaybeRow,
+  PgPool as PgPoolAdapter,
+} from "@graphile/pg-core";
+import { PgAdapterError, createPgPool } from "@graphile/pg-core";
+import { createListenClient } from "./listen";
+
+export type { ListenError } from "./listen";
+
+// Global statement counter and ID (similar to postgres.js)
+let statementId = Math.random().toString(36).slice(2);
+let statementCount = 1;
+const statementCache = new Map<string, string>();
+
+/**
+ * Infer PostgreSQL type ID for parameter (similar to postgres.js)
+ */
+function inferType(x: any): number {
+  if (x instanceof Date) return 1184; // timestamp
+  if (x instanceof Uint8Array) return 17; // bytea
+  if (x === true || x === false) return 16; // boolean
+  if (typeof x === "bigint") return 20; // bigint
+  if (Array.isArray(x)) return inferType(x[0]); // array of first element type
+  return 0; // unknown/text
+}
+
+/**
+ * Generate prepared statement name (similar to postgres.js)
+ * Uses short names to avoid PostgreSQL's 63 character limit
+ */
+function generatePreparedStatementName(sql: string, params?: any[]): string {
+  // Create a signature from types and SQL
+  const types = params?.map(inferType).join(",") || "";
+  const signature = `${types}:${sql}`;
+  
+  // Check cache first
+  const cached = statementCache.get(signature);
+  if (cached) {
+    return cached;
+  }
+  
+  // Generate new short name (like postgres.js)
+  const name = statementId + statementCount++;
+  statementCache.set(signature, name);
+  
+  // Reset if counter gets too high
+  if (statementCount > 9999) {
+    statementId = Math.random().toString(36).slice(2);
+    statementCount = 1;
+  }
+  
+  return name;
+}
+
+/**
+ * Create a PostgreSQL connection using node-postgres (pg)
+ * @param poolOrConfig - Either a pre-configured Pool instance or PoolConfig options
+ */
+export function createNodePostgresPool(
+  poolOrConfig?: Pool | PoolConfig,
+): PgPoolAdapter {
+  let pool: Pool;
+  let maxPoolSize: number;
+
+  if (poolOrConfig && "connect" in poolOrConfig && "query" in poolOrConfig) {
+    // Pre-configured Pool instance provided
+    pool = poolOrConfig;
+    // For pre-configured pools, we can't know the max size unless it's exposed
+    // We'll use totalCount as a fallback, but document this limitation
+    maxPoolSize = (poolOrConfig as any).options?.max ?? 10;
+  } else {
+    // Configuration object provided (or undefined)
+    const poolConfig = poolOrConfig as PoolConfig | undefined;
+    pool = new pg.Pool(poolConfig) as Pool;
+    maxPoolSize = poolConfig?.max ?? 10; // default is 10
+  }
+
+  const connection = createNodePostgresConnection(pool, maxPoolSize);
+  return createPgPool(connection);
+}
+
+function wrapError(error: unknown): PgAdapterError {
+  if (error && typeof error === "object" && "code" in error) {
+    const pgError = error as any;
+    return new PgAdapterError(
+      pgError.message || "Database error",
+      pgError.code,
+      error,
+      {
+        severity: pgError.severity,
+        detail: pgError.detail,
+        hint: pgError.hint,
+      },
+    );
+  }
+
+  // Handle non-PostgreSQL errors
+  const message = error instanceof Error ? error.message : String(error);
+  return new PgAdapterError(message, undefined, error);
+}
+
+function createNodePostgresConnection(
+  pool: Pool,
+  maxPoolSize: number,
+): PgConnection {
+  let closed = false;
+
+  async function withPgClient<T>(
+    callback: (client: PgClient) => Promise<T>,
+  ): Promise<T> {
+    const poolClient = await pool.connect();
+    try {
+      const client = createNodePostgresClient(poolClient, wrapError);
+      return await callback(client);
+    } finally {
+      poolClient.release();
+    }
+  }
+
+  return {
+    async query<T extends MaybeRow = any>(
+      sql: string,
+      params?: any[],
+      options?: { prepare?: boolean },
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = options?.prepare
+          ? await pool.query({
+              text: sql,
+              values: params,
+              name: generatePreparedStatementName(sql, params),
+            })
+          : await pool.query(sql, params);
+        return {
+          command: result.command,
+          rowCount: result.rowCount ?? 0,
+          rows: result.rows as T[],
+          fields: result.fields?.map((field) => ({
+            name: field.name,
+            dataTypeID: field.dataTypeID,
+          })),
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+
+    withPgClient,
+
+    async withTransaction<T>(
+      callback: (client: PgClient) => Promise<T>,
+    ): Promise<T> {
+      return withPgClient(async (client) => {
+        await client.query("BEGIN");
+        try {
+          const result = await callback(client);
+          await client.query("COMMIT");
+          return result;
+        } catch (error) {
+          await client.query("ROLLBACK");
+          throw error;
+        }
+      });
+    },
+
+    async listen(
+      channel: string,
+      onnotify: (payload: string | null) => void,
+      onError?: (error: Error) => void,
+    ): Promise<{ unlisten: () => Promise<void> }> {
+      if (closed) {
+        throw new Error("Connection is closed");
+      }
+
+      return createListenClient({
+        pool,
+        channel,
+        onnotify,
+        onError,
+      });
+    },
+
+    getPoolSize(): number {
+      return maxPoolSize;
+    },
+
+    async end(): Promise<void> {
+      closed = true;
+      await pool.end();
+    },
+  };
+}
+
+function createNodePostgresClient(
+  client: PoolClient,
+  wrapError: (error: unknown) => PgAdapterError,
+): PgClient & { client: PoolClient } {
+  return {
+    client, // Expose for transaction handling
+    async query<T extends MaybeRow = any>(
+      sql: string,
+      params?: any[],
+      options?: { prepare?: boolean },
+    ): Promise<PgQueryResult<T>> {
+      try {
+        const result = options?.prepare
+          ? await client.query({
+              text: sql,
+              values: params,
+              name: generatePreparedStatementName(sql, params),
+            })
+          : await client.query(sql, params);
+        return {
+          command: result.command,
+          rowCount: result.rowCount ?? 0,
+          rows: result.rows as T[],
+          fields: result.fields?.map((field) => ({
+            name: field.name,
+            dataTypeID: field.dataTypeID,
+          })),
+        };
+      } catch (error) {
+        throw wrapError(error);
+      }
+    },
+  };
+}

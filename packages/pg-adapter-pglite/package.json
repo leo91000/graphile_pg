@@ -1,0 +1,68 @@
+{
+  "name": "@graphile/pg-adapter-pglite",
+  "version": "0.1.0",
+  "description": "PostgreSQL adapter for PGLite",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format cjs,esm",
+    "prepack": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leo91000/graphile_pg.git",
+    "directory": "packages/pg-adapter-pglite"
+  },
+  "keywords": [
+    "graphile",
+    "postgresql",
+    "postgres",
+    "pglite",
+    "adapter",
+    "embedded"
+  ],
+  "author": "Benjie Gillam <code@benjiegillam.com>",
+  "contributors": [
+    "Leo Coletta <contact@leo-coletta.fr>"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/leo91000/graphile_pg/issues"
+  },
+  "homepage": "https://github.com/leo91000/graphile_pg/tree/main/packages/pg-adapter-pglite#readme",
+  "dependencies": {
+    "@graphile/pg-core": "workspace:^"
+  },
+  "peerDependencies": {
+    "@electric-sql/pglite": "^0.2.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.5",
+    "@types/node": "^22.16.5",
+    "tsdown": "^0.12.9",
+    "typescript": "^5.8.3"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  }
+}
