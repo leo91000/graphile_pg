@@ -77,18 +77,6 @@ function createPGLiteConnection(db: PGlite): PgConnection {
   }
 
   return {
-    async execute(
-      sql: string,
-      params?: any[],
-      _options?: { prepare?: boolean },
-    ): Promise<void> {
-      try {
-        await db.query(sql, params);
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
-
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
@@ -170,18 +158,6 @@ function createPGLiteClient(
   wrapError: (error: unknown) => PgAdapterError,
 ): PgClient {
   return {
-    async execute(
-      sql: string,
-      params?: any[],
-      _options?: { prepare?: boolean },
-    ): Promise<void> {
-      try {
-        await db.query(sql, params);
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
-
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
@@ -210,18 +186,6 @@ function createPGLiteTransactionClient(
   wrapError: (error: unknown) => PgAdapterError,
 ): PgClient {
   return {
-    async execute(
-      sql: string,
-      params?: any[],
-      _options?: { prepare?: boolean },
-    ): Promise<void> {
-      try {
-        await tx.query(sql, params);
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
-
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],

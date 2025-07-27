@@ -37,15 +37,6 @@ export interface PgQueryResult<T extends MaybeRow = Row> {
 
 export interface PgClient {
   /**
-   * Execute a query without returning results (for DDL, DML, transaction control)
-   */
-  execute(
-    sql: string,
-    params?: any[],
-    options?: { prepare?: boolean },
-  ): Promise<void>;
-
-  /**
    * Execute a query and return results with metadata
    */
   query<T extends MaybeRow = Row>(

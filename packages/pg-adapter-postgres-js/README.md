@@ -23,7 +23,7 @@ const pool = createPostgresJsPool(
   {
     max: 10,
     idle_timeout: 30,
-  }
+  },
 );
 
 // Option 2: Pass a pre-configured postgres.js sql instance
@@ -47,7 +47,7 @@ const pool = createPostgresJsPool(
     password: "secret",
     max: 10,
     idle_timeout: 30,
-  }
+  },
 );
 ```
 
@@ -55,20 +55,22 @@ const pool = createPostgresJsPool(
 
 ```typescript
 // Execute a query and get all results
-const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [
+  true,
+]);
 console.log(result.rows); // Array of all matching rows
 console.log(result.rowCount); // Number of rows returned
 
-// Execute without returning results
-await pool.execute("UPDATE users SET last_login = NOW() WHERE id = $1", [123]);
+// Execute queries
+await pool.query("UPDATE users SET last_login = NOW() WHERE id = $1", [123]);
 ```
 
 ### Transactions
 
 ```typescript
 await pool.withTransaction(async (tx) => {
-  await tx.execute("UPDATE users SET active = false WHERE id = $1", [123]);
-  await tx.execute("INSERT INTO audit_log (action) VALUES ($1)", [
+  await tx.query("UPDATE users SET active = false WHERE id = $1", [123]);
+  await tx.query("INSERT INTO audit_log (action) VALUES ($1)", [
     "user_deactivated",
   ]);
 });
@@ -82,7 +84,7 @@ const listener = await pool.listen("my_channel", (payload) => {
 });
 
 // Send notification
-await pool.execute("NOTIFY my_channel, 'Hello World'");
+await pool.notify("my_channel", "Hello World");
 
 // Stop listening
 await listener.unlisten();
@@ -105,7 +107,7 @@ const pool = createPostgresJsPool(
     max: 20,
     idle_timeout: 30,
     connect_timeout: 60,
-  }
+  },
 );
 ```
 

@@ -106,23 +106,6 @@ function createNodePostgresConnection(
   }
 
   return {
-    async execute(
-      sql: string,
-      params?: any[],
-      options?: { prepare?: boolean },
-    ): Promise<void> {
-      try {
-        if (options?.prepare) {
-          const name = generatePreparedStatementName(sql, params);
-          await pool.query({ text: sql, values: params, name });
-        } else {
-          await pool.query(sql, params);
-        }
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
-
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],
@@ -156,13 +139,13 @@ function createNodePostgresConnection(
       callback: (client: PgClient) => Promise<T>,
     ): Promise<T> {
       return withPgClient(async (client) => {
-        await client.execute("BEGIN");
+        await client.query("BEGIN");
         try {
           const result = await callback(client);
-          await client.execute("COMMIT");
+          await client.query("COMMIT");
           return result;
         } catch (error) {
-          await client.execute("ROLLBACK");
+          await client.query("ROLLBACK");
           throw error;
         }
       });
@@ -202,22 +185,6 @@ function createNodePostgresClient(
 ): PgClient & { client: PoolClient } {
   return {
     client, // Expose for transaction handling
-    async execute(
-      sql: string,
-      params?: any[],
-      options?: { prepare?: boolean },
-    ): Promise<void> {
-      try {
-        if (options?.prepare) {
-          const name = generatePreparedStatementName(sql, params);
-          await client.query({ text: sql, values: params, name });
-        } else {
-          await client.query(sql, params);
-        }
-      } catch (error) {
-        throw wrapError(error);
-      }
-    },
     async query<T extends MaybeRow = any>(
       sql: string,
       params?: any[],

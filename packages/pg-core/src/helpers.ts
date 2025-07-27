@@ -9,7 +9,7 @@ export function createPgHelpers(connection: PgConnection) {
      * Send a NOTIFY
      */
     async notify(channel: string, payload?: string): Promise<void> {
-      await connection.execute("SELECT pg_notify($1, $2)", [
+      await connection.query("SELECT pg_notify($1, $2)", [
         channel,
         payload ?? "",
       ]);

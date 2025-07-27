@@ -53,7 +53,7 @@ const pool = createPGLitePool("idb://my-database");
 
 ```typescript
 // Create tables and insert data
-await pool.execute(`
+await pool.query(`
   CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
@@ -61,7 +61,7 @@ await pool.execute(`
   )
 `);
 
-await pool.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
+await pool.query("INSERT INTO users (name, email) VALUES ($1, $2)", [
   "John Doe",
   "john@example.com",
 ]);
@@ -76,11 +76,11 @@ console.log(result.rowCount); // Number of rows returned
 
 ```typescript
 await pool.withTransaction(async (tx) => {
-  await tx.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
+  await tx.query("INSERT INTO users (name, email) VALUES ($1, $2)", [
     "Alice",
     "alice@example.com",
   ]);
-  await tx.execute("INSERT INTO users (name, email) VALUES ($1, $2)", [
+  await tx.query("INSERT INTO users (name, email) VALUES ($1, $2)", [
     "Bob",
     "bob@example.com",
   ]);
@@ -99,7 +99,7 @@ const pool = createPGLitePool(undefined, {
 });
 
 // Now you can use vector operations
-await pool.execute("CREATE EXTENSION vector");
+await pool.query("CREATE EXTENSION vector");
 ```
 
 ## Use Cases

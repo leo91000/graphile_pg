@@ -36,14 +36,16 @@ const pool = createNodePostgresPool({
 });
 
 // Execute queries
-const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [
+  true,
+]);
 console.log(result.rows); // Array of row objects
 console.log(result.rowCount); // Number of rows returned
 
 // Transaction support
 await pool.withTransaction(async (tx) => {
-  await tx.execute("UPDATE users SET active = false WHERE id = $1", [123]);
-  await tx.execute("INSERT INTO audit_log (action) VALUES ($1)", [
+  await tx.query("UPDATE users SET active = false WHERE id = $1", [123]);
+  await tx.query("INSERT INTO audit_log (action) VALUES ($1)", [
     "user_deactivated",
   ]);
 });
@@ -71,16 +73,18 @@ import { createPostgresJsPool } from "@graphile/pg-adapter-postgres-js";
 // Create a pool
 const pool = createPostgresJsPool(
   "postgresql://user:pass@localhost:5432/mydb",
-  { max: 10 }
+  { max: 10 },
 );
 
 // Same interface as node-postgres adapter
-const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [
+  true,
+]);
 console.log(result.rows); // Array of row objects
 console.log(result.rowCount); // Number of rows returned
 
-// Execute without returning results
-await pool.execute("UPDATE users SET last_seen = NOW() WHERE id = $1", [123]);
+// Execute queries
+await pool.query("UPDATE users SET last_seen = NOW() WHERE id = $1", [123]);
 ```
 
 ## Common Interface
@@ -88,7 +92,6 @@ await pool.execute("UPDATE users SET last_seen = NOW() WHERE id = $1", [123]);
 All adapters implement a common interface:
 
 - `query(sql, params?)` - Execute query and return results with metadata
-- `execute(sql, params?)` - Execute query without returning results
 - `withTransaction(callback)` - Run operations in a transaction
 - `withPgClient(callback)` - Get a client from the pool for multiple operations
 - `listen(channel, callback)` - Subscribe to PostgreSQL notifications

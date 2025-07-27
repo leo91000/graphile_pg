@@ -33,7 +33,9 @@ const pool2 = createNodePostgresPool(pgPool);
 
 ```typescript
 // Execute a query and get all results
-const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [
+  true,
+]);
 console.log(result.rows); // Array of all matching rows
 console.log(result.rowCount); // Number of rows returned
 ```
@@ -42,8 +44,8 @@ console.log(result.rowCount); // Number of rows returned
 
 ```typescript
 await pool.withTransaction(async (tx) => {
-  await tx.execute("UPDATE users SET active = false WHERE id = $1", [123]);
-  await tx.execute("INSERT INTO audit_log (action) VALUES ($1)", [
+  await tx.query("UPDATE users SET active = false WHERE id = $1", [123]);
+  await tx.query("INSERT INTO audit_log (action) VALUES ($1)", [
     "user_deactivated",
   ]);
 });

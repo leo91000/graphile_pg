@@ -17,7 +17,7 @@ describe("@graphile/pg-adapter-node-postgres integration tests", () => {
       connectionString: baseUrl,
     });
     // Execute the query and wait for completion
-    await setupPool.execute(`CREATE DATABASE ${ident(dbName)}`);
+    await setupPool.query(`CREATE DATABASE ${ident(dbName)}`);
     await setupPool.end();
 
     // Connect to the test database
@@ -34,7 +34,7 @@ describe("@graphile/pg-adapter-node-postgres integration tests", () => {
       const cleanupPool = createNodePostgresPool({
         connectionString: baseUrl,
       });
-      await cleanupPool.execute(`DROP DATABASE IF EXISTS ${ident(dbName)}`);
+      await cleanupPool.query(`DROP DATABASE IF EXISTS ${ident(dbName)}`);
       await cleanupPool.end();
     };
 

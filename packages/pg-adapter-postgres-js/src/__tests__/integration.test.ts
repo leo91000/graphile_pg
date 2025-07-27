@@ -19,7 +19,7 @@ describe("@graphile/pg-adapter-postgres-js integration tests", () => {
       },
     });
     // Execute the query without returning results
-    await setupPool.execute(`CREATE DATABASE ${ident(dbName)}`);
+    await setupPool.query(`CREATE DATABASE ${ident(dbName)}`);
     await setupPool.end();
 
     // Connect to the test database
@@ -39,7 +39,7 @@ describe("@graphile/pg-adapter-postgres-js integration tests", () => {
           // Suppress PostgreSQL notices in tests
         },
       });
-      await cleanupPool.execute(`DROP DATABASE IF EXISTS ${ident(dbName)}`);
+      await cleanupPool.query(`DROP DATABASE IF EXISTS ${ident(dbName)}`);
       await cleanupPool.end();
     };
 

@@ -43,13 +43,13 @@ export function createIntegrationTestSuite(
 
     describe("Transactions", () => {
       beforeEach(async () => {
-        await sql.execute("DROP TABLE IF EXISTS test");
-        await sql.execute("CREATE TABLE test (id INT PRIMARY KEY, name TEXT)");
+        await sql.query("DROP TABLE IF EXISTS test");
+        await sql.query("CREATE TABLE test (id INT PRIMARY KEY, name TEXT)");
       });
 
       it("commits data", async () => {
         await sql.withTransaction(async (tx) => {
-          await tx.execute("INSERT INTO test VALUES (1, 'Alice')");
+          await tx.query("INSERT INTO test VALUES (1, 'Alice')");
         });
 
         const result = await sql.query<{ name: string }>(
@@ -61,7 +61,7 @@ export function createIntegrationTestSuite(
       it("rolls back on error", async () => {
         try {
           await sql.withTransaction(async (tx) => {
-            await tx.execute("INSERT INTO test VALUES (1, 'Bob')");
+            await tx.query("INSERT INTO test VALUES (1, 'Bob')");
             throw new Error("Rollback");
           });
         } catch (e) {

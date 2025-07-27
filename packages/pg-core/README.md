@@ -23,12 +23,14 @@ yarn add @graphile/pg-core
 Query results include metadata and rows:
 
 ```typescript
-const result = await pool.query("SELECT * FROM users WHERE active = $1", [true]);
+const result = await pool.query("SELECT * FROM users WHERE active = $1", [
+  true,
+]);
 
-console.log(result.rows);     // Array of row objects
+console.log(result.rows); // Array of row objects
 console.log(result.rowCount); // Number of rows returned
-console.log(result.command);  // SQL command (e.g., "SELECT")
-console.log(result.fields);   // Column metadata (if available)
+console.log(result.command); // SQL command (e.g., "SELECT")
+console.log(result.fields); // Column metadata (if available)
 ```
 
 ## SQL Formatting Utilities

@@ -35,19 +35,19 @@ describe("postgres.js error handling", () => {
 
   it("wraps constraint violation errors", async () => {
     // Create a test table with a unique constraint
-    await connection.execute("DROP TABLE IF EXISTS test_unique");
-    await connection.execute(
+    await connection.query("DROP TABLE IF EXISTS test_unique");
+    await connection.query(
       "CREATE TABLE test_unique (id INT PRIMARY KEY, name TEXT UNIQUE)",
     );
 
     try {
       // Insert first row
-      await connection.execute(
+      await connection.query(
         "INSERT INTO test_unique (id, name) VALUES (1, 'test')",
       );
 
       // Try to insert duplicate - should trigger unique constraint violation
-      await connection.execute(
+      await connection.query(
         "INSERT INTO test_unique (id, name) VALUES (2, 'test')",
       );
       expect.fail("Should have thrown an error");
@@ -57,7 +57,7 @@ describe("postgres.js error handling", () => {
       expect((error as PgAdapterError).severity).toBe("ERROR");
       expect((error as PgAdapterError).detail).toContain("already exists");
     } finally {
-      await connection.execute("DROP TABLE IF EXISTS test_unique");
+      await connection.query("DROP TABLE IF EXISTS test_unique");
     }
   });
 
@@ -78,11 +78,11 @@ describe("postgres.js error handling", () => {
   it("handles errors in transactions", async () => {
     try {
       await connection.withTransaction(async (client) => {
-        await client.execute("CREATE TABLE test_tx (id INT PRIMARY KEY)");
+        await client.query("CREATE TABLE test_tx (id INT PRIMARY KEY)");
 
         // This should fail due to duplicate key
-        await client.execute("INSERT INTO test_tx VALUES (1)");
-        await client.execute("INSERT INTO test_tx VALUES (1)");
+        await client.query("INSERT INTO test_tx VALUES (1)");
+        await client.query("INSERT INTO test_tx VALUES (1)");
         expect.fail("Should have thrown an error");
       });
     } catch (error) {
@@ -90,7 +90,7 @@ describe("postgres.js error handling", () => {
       expect((error as PgAdapterError).code).toBe("23505"); // unique_violation
     } finally {
       // Clean up in case the table was created
-      await connection.execute("DROP TABLE IF EXISTS test_tx");
+      await connection.query("DROP TABLE IF EXISTS test_tx");
     }
   });
 });
