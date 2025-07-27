@@ -17,6 +17,11 @@ import { createListenClient } from "./listen";
 
 export type { ListenError } from "./listen";
 
+// Global statement counter and ID (similar to postgres.js)
+let statementId = Math.random().toString(36).slice(2);
+let statementCount = 1;
+const statementCache = new Map<string, string>();
+
 /**
  * Infer PostgreSQL type ID for parameter (similar to postgres.js)
  */
@@ -30,14 +35,31 @@ function inferType(x: any): number {
 }
 
 /**
- * Generate prepared statement name (similar to postgres.js signature)
+ * Generate prepared statement name (similar to postgres.js)
+ * Uses short names to avoid PostgreSQL's 63 character limit
  */
 function generatePreparedStatementName(sql: string, params?: any[]): string {
-  if (!params || params.length === 0) {
-    return sql;
+  // Create a signature from types and SQL
+  const types = params?.map(inferType).join(",") || "";
+  const signature = `${types}:${sql}`;
+  
+  // Check cache first
+  const cached = statementCache.get(signature);
+  if (cached) {
+    return cached;
   }
-  const types = params.map(inferType).join(",");
-  return `${types}:${sql}`;
+  
+  // Generate new short name (like postgres.js)
+  const name = statementId + statementCount++;
+  statementCache.set(signature, name);
+  
+  // Reset if counter gets too high
+  if (statementCount > 9999) {
+    statementId = Math.random().toString(36).slice(2);
+    statementCount = 1;
+  }
+  
+  return name;
 }
 
 /**
